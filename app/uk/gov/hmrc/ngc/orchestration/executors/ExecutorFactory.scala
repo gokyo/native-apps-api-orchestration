@@ -60,7 +60,7 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
           Some(ExecutorResponse(executorName, Option(response), cacheTime, Some(false)))
         }
       case GET =>
-        connector.doGet(host, path(journeyId, nino, None), port, hc).map {
+        connector.doGet(host, path(journeyId, nino, data), port, hc).map {
           response => {
             Some(ExecutorResponse(executorName, Option(response), cacheTime, Some(false)))
           }
@@ -172,7 +172,7 @@ case class DeskProFeedbackExecutor() extends ServiceExecutor {
 case class PushNotificationGetMessageExecutor() extends ServiceExecutor {
   override val executorName: String = "push-notification-get-message"
 
-  override val executionType: String = POST
+  override val executionType: String = GET
   override val serviceName: String = "push-notification"
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = {
