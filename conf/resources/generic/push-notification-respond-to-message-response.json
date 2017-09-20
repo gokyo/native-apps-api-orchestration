@@ -1,0 +1,15 @@
+{
+  "OrchestrationResponse": {
+    "serviceResponse": [
+      {
+        "name": "push-notification-respond-to-message",
+        "responseData": {
+        },
+        "failure": false
+      }
+    ]
+  },
+  "status": {
+    "code": "complete"
+  }
+}

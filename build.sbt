@@ -16,6 +16,8 @@ publishingSettings
 unmanagedResourceDirectories in Compile += baseDirectory.value / "resources"
 defaultSettings()
 
+PlayKeys.playDefaultPort := 8237
+
 scalaVersion := "2.11.8"
 crossScalaVersions := Seq("2.11.8")
 

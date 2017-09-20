@@ -13,7 +13,7 @@ object AppDependencies {
   private val domainVersion = "4.1.0"
   private val playHmrcApiVersion = "1.4.0"
   private val hmrcEmailAddressVersion = "1.1.0"
-  private val microserviceAsync = "1.2.0"
+  private val microserviceAsyncVersion = "1.3.0"
   private val reactiveMongoVersion = "5.2.0"
   private val taxYearVersion = "0.3.0"
 
@@ -26,7 +26,7 @@ object AppDependencies {
     ws,
     "uk.gov.hmrc" %% "microservice-bootstrap" % microserviceBootstrapVersion,
     "uk.gov.hmrc" %% "play-authorisation" % playAuthVersion,
-    "uk.gov.hmrc" %% "microservice-async" % microserviceAsync,
+    "uk.gov.hmrc" %% "microservice-async" % microserviceAsyncVersion,
     "uk.gov.hmrc" %% "play-health" % playHealthVersion,
     "uk.gov.hmrc" %% "play-url-binders" % playUrlBindersVersion,
     "uk.gov.hmrc" %% "play-config" % playConfigVersion,

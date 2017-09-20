@@ -89,6 +89,7 @@ trait ExecutorFactory {
   val versionCheck = VersionCheckExecutor()
   val pushNotificationGetMessageExecutor = PushNotificationGetMessageExecutor()
   val pushNotificationGetCurrentMessagesExecutor = PushNotificationGetCurrentMessagesExecutor()
+  val pushNotificationRespondToMessageExecutor = PushNotificationRespondToMessageExecutor()
   val nativeAppSurveyWidget = WidgetSurveyDataServiceExecutor()
   val claimantDetailsServiceExecutor = ClaimantDetailsServiceExecutor()
 
@@ -96,14 +97,16 @@ trait ExecutorFactory {
 
   val maxServiceCalls: Int
   val maxEventCalls: Int
-
   val serviceExecutors: Map[String, ServiceExecutor] = Map(
-    versionCheck.executorName -> versionCheck,
-    feedback.executorName -> feedback,
-    pushNotificationGetMessageExecutor.executorName -> pushNotificationGetMessageExecutor,
-    pushNotificationGetCurrentMessagesExecutor.executorName -> pushNotificationGetCurrentMessagesExecutor,
-    nativeAppSurveyWidget.executorName -> nativeAppSurveyWidget,
-    claimantDetailsServiceExecutor.executorName -> claimantDetailsServiceExecutor
+    Seq(
+      versionCheck,
+      feedback,
+      pushNotificationGetMessageExecutor,
+      pushNotificationGetCurrentMessagesExecutor,
+      pushNotificationRespondToMessageExecutor,
+      nativeAppSurveyWidget,
+      claimantDetailsServiceExecutor
+    ).map(executor => executor.executorName -> executor): _*
   )
 
   val eventExecutors: Map[String, EventExecutor] = Map(auditEventExecutor.executorName -> auditEventExecutor)
@@ -193,6 +196,23 @@ case class PushNotificationGetCurrentMessagesExecutor() extends ServiceExecutor 
   override val serviceName: String = "push-notification"
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = "/messages/current"
+
+  override val cacheTime: Option[Long] = None
+
+  override def connector: GenericConnector = GenericConnector
+}
+
+case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
+  override val executorName: String = "push-notification-respond-to-message"
+
+  override val executionType: String = POST
+  override val serviceName: String = "push-notification"
+
+  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = {
+    val messageId = data.flatMap(json => (json \ "messageId").asOpt[String]).getOrElse(throw new Exception("No messageId provided"))
+
+    s"/messages/$messageId/response${buildJourneyQueryParam(journeyId)}"
+  }
 
   override val cacheTime: Option[Long] = None
 

@@ -63,18 +63,23 @@ trait GenericOrchestrationSetup {
   lazy val testFeedbackExecutor = new TestFeedbackExecutor(testSuccessGenericConnector)
   lazy val testPushNotificationGetMessageExecutor = new TestPushNotificationGetMessageExecutor(testSuccessGenericConnector)
   lazy val testPushNotificationGetCurrentMessageExecutor = new TestPushNotificationGetCurrentMessageExecutor(testSuccessGenericConnector)
+  lazy val testPushNotificationRespondToMessageExecutor = new TestPushNotificationRespondToMessageExecutor(testSuccessGenericConnector)
   lazy val testClaimantDetailsServiceExecutor = new TestClaimantDetailsServiceExecutor(testSuccessGenericConnector)
   lazy val testAuditConnector = new TestAuditConnector()
   lazy val testAuditEventExecutor = new TestAuditEventExecutor(new Audit("test-app", testAuditConnector))
 
 
   lazy val testEventExecutors = Map(testAuditEventExecutor.executorName -> testAuditEventExecutor)
-  lazy val testServiceExecutors = Map(testVersionCheckExecutor.executorName -> testVersionCheckExecutor,
-                                      testFeedbackExecutor.executorName -> testFeedbackExecutor,
-                                      testPushNotificationGetMessageExecutor.executorName -> testPushNotificationGetMessageExecutor,
-                                      testPushNotificationGetCurrentMessageExecutor.executorName -> testPushNotificationGetCurrentMessageExecutor,
-                                      testClaimantDetailsServiceExecutor.executorName -> testClaimantDetailsServiceExecutor
-                                  )
+  lazy val testServiceExecutors = Map(
+    Seq(
+      testVersionCheckExecutor,
+      testFeedbackExecutor,
+      testPushNotificationGetMessageExecutor,
+      testPushNotificationGetCurrentMessageExecutor,
+      testPushNotificationRespondToMessageExecutor,
+      testClaimantDetailsServiceExecutor
+    ).map(executor => executor.executorName -> executor): _*
+  )
 
   lazy val testExecutorFactory = new TestExecutorFactory(testServiceExecutors,testEventExecutors, maxServiceCalls,maxEventCalls)
 
@@ -155,6 +160,10 @@ class TestPushNotificationGetMessageExecutor(testGenericConnector: GenericConnec
 }
 
 class TestPushNotificationGetCurrentMessageExecutor(testGenericConnector: GenericConnector) extends PushNotificationGetCurrentMessagesExecutor {
+  override def connector: GenericConnector = testGenericConnector
+}
+
+class TestPushNotificationRespondToMessageExecutor(testGenericConnector: GenericConnector) extends PushNotificationRespondToMessageExecutor {
   override def connector: GenericConnector = testGenericConnector
 }
 
