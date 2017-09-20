@@ -89,6 +89,7 @@ trait ExecutorFactory {
   val versionCheck = VersionCheckExecutor()
   val pushNotificationGetMessageExecutor = PushNotificationGetMessageExecutor()
   val pushNotificationGetCurrentMessagesExecutor = PushNotificationGetCurrentMessagesExecutor()
+  val pushNotificationRespondToMessageExecutor = PushNotificationRespondToMessageExecutor()
   val nativeAppSurveyWidget = WidgetSurveyDataServiceExecutor()
   val claimantDetailsServiceExecutor = ClaimantDetailsServiceExecutor()
 
@@ -102,6 +103,7 @@ trait ExecutorFactory {
     feedback.executorName -> feedback,
     pushNotificationGetMessageExecutor.executorName -> pushNotificationGetMessageExecutor,
     pushNotificationGetCurrentMessagesExecutor.executorName -> pushNotificationGetCurrentMessagesExecutor,
+    pushNotificationRespondToMessageExecutor.executorName -> pushNotificationRespondToMessageExecutor,
     nativeAppSurveyWidget.executorName -> nativeAppSurveyWidget,
     claimantDetailsServiceExecutor.executorName -> claimantDetailsServiceExecutor
   )
@@ -193,6 +195,23 @@ case class PushNotificationGetCurrentMessagesExecutor() extends ServiceExecutor 
   override val serviceName: String = "push-notification"
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = "/messages/current"
+
+  override val cacheTime: Option[Long] = None
+
+  override def connector: GenericConnector = GenericConnector
+}
+
+case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
+  override val executorName: String = "push-notification-respond-to-message"
+
+  override val executionType: String = POST
+  override val serviceName: String = "push-notification"
+
+  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = {
+    val messageId = data.flatMap(json => (json \ "messageId").asOpt[String]).getOrElse(throw new Exception("No messageId provided"))
+
+    s"/messages/$messageId/response${buildJourneyQueryParam(journeyId)}"
+  }
 
   override val cacheTime: Option[Long] = None
 

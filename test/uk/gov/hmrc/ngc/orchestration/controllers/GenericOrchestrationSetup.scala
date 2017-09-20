@@ -63,6 +63,7 @@ trait GenericOrchestrationSetup {
   lazy val testFeedbackExecutor = new TestFeedbackExecutor(testSuccessGenericConnector)
   lazy val testPushNotificationGetMessageExecutor = new TestPushNotificationGetMessageExecutor(testSuccessGenericConnector)
   lazy val testPushNotificationGetCurrentMessageExecutor = new TestPushNotificationGetCurrentMessageExecutor(testSuccessGenericConnector)
+  lazy val testPushNotificationRespondToMessageExecutor = new TestPushNotificationRespondToMessageExecutor(testSuccessGenericConnector)
   lazy val testClaimantDetailsServiceExecutor = new TestClaimantDetailsServiceExecutor(testSuccessGenericConnector)
   lazy val testAuditConnector = new TestAuditConnector()
   lazy val testAuditEventExecutor = new TestAuditEventExecutor(new Audit("test-app", testAuditConnector))
@@ -73,6 +74,7 @@ trait GenericOrchestrationSetup {
                                       testFeedbackExecutor.executorName -> testFeedbackExecutor,
                                       testPushNotificationGetMessageExecutor.executorName -> testPushNotificationGetMessageExecutor,
                                       testPushNotificationGetCurrentMessageExecutor.executorName -> testPushNotificationGetCurrentMessageExecutor,
+                                      testPushNotificationRespondToMessageExecutor.executorName -> testPushNotificationRespondToMessageExecutor,
                                       testClaimantDetailsServiceExecutor.executorName -> testClaimantDetailsServiceExecutor
                                   )
 
@@ -155,6 +157,10 @@ class TestPushNotificationGetMessageExecutor(testGenericConnector: GenericConnec
 }
 
 class TestPushNotificationGetCurrentMessageExecutor(testGenericConnector: GenericConnector) extends PushNotificationGetCurrentMessagesExecutor {
+  override def connector: GenericConnector = testGenericConnector
+}
+
+class TestPushNotificationRespondToMessageExecutor(testGenericConnector: GenericConnector) extends PushNotificationRespondToMessageExecutor {
   override def connector: GenericConnector = testGenericConnector
 }
 
