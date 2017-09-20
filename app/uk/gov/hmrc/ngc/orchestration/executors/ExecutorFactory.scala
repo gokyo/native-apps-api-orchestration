@@ -97,15 +97,16 @@ trait ExecutorFactory {
 
   val maxServiceCalls: Int
   val maxEventCalls: Int
-
   val serviceExecutors: Map[String, ServiceExecutor] = Map(
-    versionCheck.executorName -> versionCheck,
-    feedback.executorName -> feedback,
-    pushNotificationGetMessageExecutor.executorName -> pushNotificationGetMessageExecutor,
-    pushNotificationGetCurrentMessagesExecutor.executorName -> pushNotificationGetCurrentMessagesExecutor,
-    pushNotificationRespondToMessageExecutor.executorName -> pushNotificationRespondToMessageExecutor,
-    nativeAppSurveyWidget.executorName -> nativeAppSurveyWidget,
-    claimantDetailsServiceExecutor.executorName -> claimantDetailsServiceExecutor
+    Seq(
+      versionCheck,
+      feedback,
+      pushNotificationGetMessageExecutor,
+      pushNotificationGetCurrentMessagesExecutor,
+      pushNotificationRespondToMessageExecutor,
+      nativeAppSurveyWidget,
+      claimantDetailsServiceExecutor
+    ).map(executor => executor.executorName -> executor): _*
   )
 
   val eventExecutors: Map[String, EventExecutor] = Map(auditEventExecutor.executorName -> auditEventExecutor)

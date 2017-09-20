@@ -70,13 +70,16 @@ trait GenericOrchestrationSetup {
 
 
   lazy val testEventExecutors = Map(testAuditEventExecutor.executorName -> testAuditEventExecutor)
-  lazy val testServiceExecutors = Map(testVersionCheckExecutor.executorName -> testVersionCheckExecutor,
-                                      testFeedbackExecutor.executorName -> testFeedbackExecutor,
-                                      testPushNotificationGetMessageExecutor.executorName -> testPushNotificationGetMessageExecutor,
-                                      testPushNotificationGetCurrentMessageExecutor.executorName -> testPushNotificationGetCurrentMessageExecutor,
-                                      testPushNotificationRespondToMessageExecutor.executorName -> testPushNotificationRespondToMessageExecutor,
-                                      testClaimantDetailsServiceExecutor.executorName -> testClaimantDetailsServiceExecutor
-                                  )
+  lazy val testServiceExecutors = Map(
+    Seq(
+      testVersionCheckExecutor,
+      testFeedbackExecutor,
+      testPushNotificationGetMessageExecutor,
+      testPushNotificationGetCurrentMessageExecutor,
+      testPushNotificationRespondToMessageExecutor,
+      testClaimantDetailsServiceExecutor
+    ).map(executor => executor.executorName -> executor): _*
+  )
 
   lazy val testExecutorFactory = new TestExecutorFactory(testServiceExecutors,testEventExecutors, maxServiceCalls,maxEventCalls)
 
