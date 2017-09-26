@@ -1,7 +1,0 @@
-{
-  "serviceRequest": [
-    {
-      "name": "push-notification-get-current-messages"
-    }
-  ]
-}
