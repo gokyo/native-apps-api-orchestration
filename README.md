@@ -26,8 +26,6 @@ API
 | Feedback ```/native-app/:nino/poll``` | GET | Poll the status of the async feedback task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/feedback-poll.md) |
 | Get Message ```/native-app/:nino/startup?journeyId={id}``` | POST | Retrieve message associated with Id and update state to answer. [More...](docs/push-notification-get-message.md) |
 | Get Message ```/native-app/:nino/poll``` | GET | Poll the status of the async get message task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/push-notification-get-message-poll.md) |
-| Get Current Message ```/native-app/:nino/startup?journeyId={id}``` | POST | Returns all messages that have not yet been answered or acknowledged. [More...](docs/push-notification-get-current-messages.md) |
-| Get Current Message ```/native-app/:nino/poll``` | GET | Poll the status of the async get current message task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/push-notification-get-current-messages-poll.md) |
 | Survey Widget ```/native-app/:nino/startup?journeyId={id}``` | POST | Persists widget survey data captured in the app. [More...](docs/survey-widget.md) |
 | Survey Widget ```/native-app/:nino/poll``` | GET | Poll the status of the async survey widget task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/survey-widget-poll.md) |
 | Audit ```/native-app/:nino/startup?journeyId={id}``` | POST | Retrieve message associated with Id and update state to answer. [More...](docs/audit-event.md) |

@@ -536,26 +536,6 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
     }
 
-    "returns a success response from push-notification-get-current-messages generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "push-notification-get-current-messages-success"
-      override val statusCode: Option[Int] = Option(200)
-      override val mapping: Map[String, Boolean] = Map("/messages/current" -> true)
-      override val exception: Option[Exception] = None
-      override lazy val response: JsValue = Json.parse(findResource(s"/resources/generic/push-notification-get-current-message-response.json").get)
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(false,
-        (response \\ "responseData").head)))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/push-notification-get-current-message-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
     "returns a success response from push-notification-respond-to-message generic service" in new TestGenericOrchestrationController with FileResource {
       override lazy val test_id: String = "push-notification-respond-to-message-success"
       override val statusCode: Option[Int] = Some(200)

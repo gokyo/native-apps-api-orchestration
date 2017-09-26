@@ -16,8 +16,6 @@
 
 package uk.gov.hmrc.ngc.orchestration.executors
 
-import java.util.concurrent.TimeoutException
-
 import play.api.libs.json._
 import play.api.{Configuration, Logger, Play}
 import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
@@ -88,7 +86,6 @@ trait ExecutorFactory {
   val feedback = DeskProFeedbackExecutor()
   val versionCheck = VersionCheckExecutor()
   val pushNotificationGetMessageExecutor = PushNotificationGetMessageExecutor()
-  val pushNotificationGetCurrentMessagesExecutor = PushNotificationGetCurrentMessagesExecutor()
   val pushNotificationRespondToMessageExecutor = PushNotificationRespondToMessageExecutor()
   val nativeAppSurveyWidget = WidgetSurveyDataServiceExecutor()
   val claimantDetailsServiceExecutor = ClaimantDetailsServiceExecutor()
@@ -102,7 +99,6 @@ trait ExecutorFactory {
       versionCheck,
       feedback,
       pushNotificationGetMessageExecutor,
-      pushNotificationGetCurrentMessagesExecutor,
       pushNotificationRespondToMessageExecutor,
       nativeAppSurveyWidget,
       claimantDetailsServiceExecutor
@@ -183,19 +179,6 @@ case class PushNotificationGetMessageExecutor() extends ServiceExecutor {
 
     s"/messages/$messageId${buildJourneyQueryParam(journeyId)}"
   }
-
-  override val cacheTime: Option[Long] = None
-
-  override def connector: GenericConnector = GenericConnector
-}
-
-case class PushNotificationGetCurrentMessagesExecutor() extends ServiceExecutor {
-  override val executorName: String = "push-notification-get-current-messages"
-
-  override val executionType: String = GET
-  override val serviceName: String = "push-notification"
-
-  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = "/messages/current"
 
   override val cacheTime: Option[Long] = None
 

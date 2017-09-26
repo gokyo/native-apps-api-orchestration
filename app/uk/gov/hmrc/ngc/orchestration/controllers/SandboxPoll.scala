@@ -67,7 +67,6 @@ trait SandboxPoll extends FileResource with ConfiguredCampaigns {
           case "survey-widget"    ⇒ buildResponse(name, Some("/resources/generic/poll/survey-widget.json"))
           case "claimant-details" ⇒ buildResponse(name, Some("/resources/generic/poll/claimant-details.json"))
           case "push-notification-get-message" ⇒ buildResponse(name, Some("/resources/generic/poll/get-message.json"))
-          case "push-notification-get-current-messages" ⇒ buildResponse(name, Some("/resources/generic/poll/get-current-messages.json"))
           case _ ⇒ buildResponse(name, None)
         }
       } yield json).filter(_.isDefined).map(_.get)
