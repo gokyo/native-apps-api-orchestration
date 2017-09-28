@@ -18,6 +18,25 @@ audit-event
 
 *  **Request body**
 
+New format. `data.details` contains arbitrary String properties that are passed through unmodified as the `details` of the Splunk event. 
+```json
+{
+  "eventRequest": [
+    {
+      "name": "ngc-audit-event",
+      "data": {
+        "auditType": "TCSPayment",
+        "details": {
+          "nino": "some-nino",
+          "someArbitraryDetailName": "someArbitraryDetailValue"
+        }
+      }
+    }
+  ]
+}
+```
+
+Old, deprecated version (support to be removed once mobile apps stop sending in this format):
 ```json
 {
   "eventRequest": [
@@ -31,6 +50,7 @@ audit-event
   ]
 }
 ```
+
 
 * **Success Response:**
 
