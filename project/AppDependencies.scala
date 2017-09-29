@@ -5,7 +5,6 @@ object AppDependencies {
   import play.sbt.PlayImport._
 
   private val microserviceBootstrapVersion = "6.9.0"
-  private val playUiVersion = "7.8.0"
   private val domainVersion = "4.1.0"
   private val playHmrcApiVersion = "2.0.0"
   private val hmrcEmailAddressVersion = "1.1.0"
@@ -25,7 +24,6 @@ object AppDependencies {
     "uk.gov.hmrc" %% "microservice-async" % microserviceAsyncVersion,
     "uk.gov.hmrc" %% "domain" % domainVersion,
     "uk.gov.hmrc" %% "play-hmrc-api" % playHmrcApiVersion,
-    "uk.gov.hmrc" %% "play-ui" % playUiVersion,
     "uk.gov.hmrc" %% "emailaddress" % hmrcEmailAddressVersion,
     "uk.gov.hmrc" %% "play-reactivemongo" % reactiveMongoVersion,
     "uk.gov.hmrc" %% "tax-year" % taxYearVersion

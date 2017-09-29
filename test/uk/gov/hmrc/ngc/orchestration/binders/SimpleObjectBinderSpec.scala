@@ -16,10 +16,22 @@
 
 package uk.gov.hmrc.ngc.orchestration.binders
 
-import uk.gov.hmrc.domain.Nino
+import org.scalatest.{Matchers, WordSpecLike}
 
-object NinoBinder extends SimpleObjectBinder[Nino](Nino.apply, _.value)
+class SimpleObjectBinderSpec extends WordSpecLike with Matchers {
 
-object Binders {
-  implicit val ninoBinder = NinoBinder
+  "binding a value" should {
+    "return an error for invalid value" in {
+      val result : Either[String, TestObject]= TestBinder.bind("key", "short")
+      result.isLeft should be(true)
+      result.left.get shouldBe "Cannot parse parameter 'key' with value 'short' as 'TestObject'"
+    }
+  }
+
 }
+
+case class TestObject(value: String) {
+  require(value.length > 5)
+}
+
+object TestBinder extends SimpleObjectBinder[TestObject](TestObject.apply, _.value)
