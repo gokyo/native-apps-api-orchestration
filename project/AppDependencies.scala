@@ -18,9 +18,9 @@ object AppDependencies {
   private val taxYearVersion = "0.3.0"
 
   private val pegdownVersion = "1.6.0"
-  private val wireMockVersion = "2.2.2"
+  private val wireMockVersion = "2.8.0"
   private val hmrcTestVersion = "2.3.0"
-  private val scalaTestVersion = "1.2.5"
+  private val scalaTestVersion = "3.0.4"
 
   val compile = Seq(
     ws,
@@ -64,8 +64,8 @@ object AppDependencies {
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
         "com.github.tomakehurst" % "wiremock" % wireMockVersion % scope,
-        "org.mockito" % "mockito-all" % "1.9.5" % scope,
-        "org.scalatestplus.play" %% "scalatestplus-play" % "1.5.1" % scope
+        "org.mockito" % "mockito-core" % "2.10.0" % scope,
+        "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1" % scope
       )
     }.test
   }

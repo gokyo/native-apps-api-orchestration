@@ -16,17 +16,16 @@
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
+import com.github.tomakehurst.wiremock.client.WireMock._
 import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.mock.MockitoSugar
+import org.scalatest.mockito.MockitoSugar
 import org.scalatest.time.{Millis, Span}
 import play.api.test.FakeRequest
 import uk.gov.hmrc.api.controllers.DocumentationController
-import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.play.test.UnitSpec
 import utils.{MicroserviceLocalRunSugar, WiremockServiceLocatorSugar}
-import com.github.tomakehurst.wiremock.client.WireMock._
 
 /**
  * Testcase to verify the capability of integration with the API platform.
