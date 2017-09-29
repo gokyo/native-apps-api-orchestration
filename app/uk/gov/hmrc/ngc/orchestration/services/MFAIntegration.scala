@@ -22,12 +22,12 @@ import play.api.libs.json._
 import uk.gov.hmrc.ngc.orchestration.connectors.AuthExchangeResponse
 import uk.gov.hmrc.ngc.orchestration.controllers.BadRequestException
 import uk.gov.hmrc.ngc.orchestration.domain.{MfaURI, Accounts}
-import uk.gov.hmrc.play.http.HeaderCarrier
-import uk.gov.hmrc.play.http.logging.Authorization
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Try,Success,Failure}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.logging.Authorization
 
 case class MFAAPIResponse(routeToTwoFactor:Boolean, mfa:Option[MfaURI], authUpdated:Boolean)
 

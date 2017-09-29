@@ -18,8 +18,8 @@ defaultSettings()
 
 PlayKeys.playDefaultPort := 8237
 
-scalaVersion := "2.11.8"
-crossScalaVersions := Seq("2.11.8")
+scalaVersion := "2.11.11"
+crossScalaVersions := Seq("2.11.11")
 
 libraryDependencies ++= AppDependencies()
 retrieveManaged := true

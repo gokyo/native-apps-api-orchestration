@@ -17,15 +17,16 @@
 package uk.gov.hmrc.ngc.orchestration.controllers.action
 
 import play.api.Logger
-import play.api.libs.json.{Writes, Json}
+import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import uk.gov.hmrc.api.controllers._
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.play.auth.microservice.connectors.ConfidenceLevel
-import uk.gov.hmrc.play.http._
-import uk.gov.hmrc.play.http.hooks.HttpHook
+import uk.gov.hmrc.http.hooks.HttpHook
+import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
 import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.controllers.ErrorUnauthorizedNoNino
+import uk.gov.hmrc.play.HeaderCarrierConverter
+import uk.gov.hmrc.play.auth.microservice.connectors.ConfidenceLevel
 
 import scala.concurrent.Future
 
@@ -44,13 +45,13 @@ trait AccountAccessControl extends Results {
   case object ErrorUnauthorized extends ErrorResponse(401, "UNAUTHORIZED", "Invalid request")
 
     def invokeBlock[A](request: Request[A], block: AuthenticatedRequest[A] => Future[Result], taxId:Option[Nino]) = {
-      implicit val hc = HeaderCarrier.fromHeadersAndSession(request.headers, None)
+      implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
         authConnector.grantAccess(taxId).flatMap {
           authority => {
             block(AuthenticatedRequest(Some(authority), request))
           }
     }.recover {
-      case ex: uk.gov.hmrc.play.http.Upstream4xxResponse =>
+      case ex: uk.gov.hmrc.http.Upstream4xxResponse =>
         Logger.info("Unauthorized! Failed to grant access since 4xx response!")
         Unauthorized(Json.toJson(ErrorUnauthorizedMicroService))
 
@@ -109,19 +110,24 @@ object AccountAccessControlOff extends AccountAccessControl {
 
     override def serviceConfidenceLevel: ConfidenceLevel = ConfidenceLevel.L0
 
-    override def http: HttpGet with HttpPost = new HttpGet with HttpPost {
-      def sandboxMode = Future.failed(new IllegalArgumentException("Sandbox mode!"))
+    override def http: HttpPost with HttpGet = new HttpPost with HttpGet {
+      private def failedNoHttp = Future.failed(noHttp)
+      private def noHttp: RuntimeException =
+        new UnsupportedOperationException("Access control check is off - no HTTP requests should be being made by this AuthConnector")
 
-      override protected def doGet(url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = Future.failed(new IllegalArgumentException("Sandbox mode!"))
+      override def configuration = throw noHttp
+
       override val hooks: Seq[HttpHook] = NoneRequired
 
-      override protected def doPost[A](url: String, body: A, headers: Seq[(String, String)])(implicit wts: Writes[A], hc: HeaderCarrier): Future[HttpResponse] = sandboxMode
+      override def doGet(url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = failedNoHttp
 
-      override protected def doPostString(url: String, body: String, headers: Seq[(String, String)])(implicit hc: HeaderCarrier): Future[HttpResponse] = sandboxMode
+      override def doPost[A](url: String, body: A, headers: Seq[(String, String)])(implicit wts: Writes[A], hc: HeaderCarrier): Future[HttpResponse] = failedNoHttp
 
-      override protected def doFormPost(url: String, body: Map[String, Seq[String]])(implicit hc: HeaderCarrier): Future[HttpResponse] = sandboxMode
+      override def doPostString(url: String, body: String, headers: Seq[(String, String)])(implicit hc: HeaderCarrier): Future[HttpResponse] = failedNoHttp
 
-      override protected def doEmptyPost[A](url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = sandboxMode
+      override def doFormPost(url: String, body: Map[String, Seq[String]])(implicit hc: HeaderCarrier): Future[HttpResponse] = failedNoHttp
+
+      override def doEmptyPost[A](url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = failedNoHttp
     }
   }
 }

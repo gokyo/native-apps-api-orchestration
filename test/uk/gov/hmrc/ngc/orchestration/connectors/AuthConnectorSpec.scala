@@ -19,11 +19,11 @@ package uk.gov.hmrc.ngc.orchestration.connectors
 import org.scalatest.concurrent.ScalaFutures
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.domain.{Nino, SaUtr}
+import uk.gov.hmrc.http._
+import uk.gov.hmrc.http.hooks.HttpHook
 import uk.gov.hmrc.ngc.orchestration.domain.CredentialStrength
 import uk.gov.hmrc.play.auth.microservice.connectors.ConfidenceLevel
-import uk.gov.hmrc.play.http.hooks.HttpHook
 import uk.gov.hmrc.play.http.ws.WSPost
-import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet, HttpResponse}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.Future
@@ -38,8 +38,8 @@ class AuthConnectorSpec extends UnitSpec with ScalaFutures {
 
     override def uuid = "some_value"
 
-    override def http: HttpGet with WSPost = new HttpGet with WSPost {
-      override protected def doGet(url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = Future.successful(response)
+    override def http: HttpPost with HttpGet = new HttpPost with HttpGet with WSPost {
+      override def doGet(url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = Future.successful(response)
 
       override val hooks: Seq[HttpHook] = Seq.empty
     }

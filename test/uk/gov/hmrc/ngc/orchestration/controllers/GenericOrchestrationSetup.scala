@@ -19,6 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 import play.api.libs.json.{JsValue, Json}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier, HttpGet, HttpPost}
 import uk.gov.hmrc.mongo.{DatabaseUpdate, Updated}
 import uk.gov.hmrc.msasync.repository.{AsyncRepository, TaskCachePersist}
 import uk.gov.hmrc.ngc.orchestration.config.{MicroserviceAuditConnector, WSHttp}
@@ -30,8 +31,7 @@ import uk.gov.hmrc.ngc.orchestration.services.{LiveOrchestrationService, Orchest
 import uk.gov.hmrc.play.asyncmvc.model.TaskCache
 import uk.gov.hmrc.play.audit.http.config.AuditingConfig
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
-import uk.gov.hmrc.play.audit.model.{Audit, AuditEvent}
-import uk.gov.hmrc.play.http.{GatewayTimeoutException, HeaderCarrier, HttpGet, HttpPost}
+import uk.gov.hmrc.play.audit.model.{Audit, DataEvent}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -172,9 +172,9 @@ class TestGenericOrchestrationConnector(response:Seq[GenericServiceResponse], ex
   override def http: HttpPost with HttpGet = WSHttp
   var pos=0
 
-  override def doPost(json: JsValue, host: String, path: String, port: Int, hc: HeaderCarrier): Future[JsValue] = respond()
+  override def doPost(json: JsValue, host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = respond()
 
-  override def doGet(host: String, path: String, port: Int, hc: HeaderCarrier): Future[JsValue] = respond()
+  override def doGet(host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = respond()
 
   def respond(): Future[JsValue] = {
     val testResponse: GenericServiceResponse = response(pos)
@@ -192,9 +192,9 @@ class TestGenericOrchestrationConnector(response:Seq[GenericServiceResponse], ex
 }
 
 class TestAuditConnector extends AuditConnector {
-  override def auditingConfig: AuditingConfig = new AuditingConfig(None, false, false)
+  override def auditingConfig: AuditingConfig = new AuditingConfig(None, false)
 
-  override def sendEvent(event: AuditEvent)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[AuditResult] = Future.successful(AuditResult.Success)
+  override def sendEvent(event: DataEvent)(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[AuditResult] = Future.successful(AuditResult.Success)
 }
 
 class TestServiceGenericConnector(pathFailMap: Map[String, Boolean], response: JsValue, httpResponseCode:Option[Int]=None, exception:Option[Exception]=None) extends GenericConnector {
@@ -202,7 +202,7 @@ class TestServiceGenericConnector(pathFailMap: Map[String, Boolean], response: J
 
   override def http: HttpPost with HttpGet = WSHttp
 
-  override def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier): Future[JsValue] = {
+  override def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     path match {
       case "/profile/native-app/version-check" =>
         passFail(response, isSuccess(path))
@@ -218,7 +218,7 @@ class TestServiceGenericConnector(pathFailMap: Map[String, Boolean], response: J
 
   def isSuccess(key: String): Boolean = pathFailMap.getOrElse(key,false)
 
-  override def doGet(host: String, path: String, port: Int, hc: HeaderCarrier): Future[JsValue] = {
+  override def doGet(host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     Future.failed(new Exception(s"Test Scenario Error! The path $path is not defined!"))
   }
 }

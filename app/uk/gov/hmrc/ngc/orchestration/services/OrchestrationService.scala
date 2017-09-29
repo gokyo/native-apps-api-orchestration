@@ -29,11 +29,11 @@ import uk.gov.hmrc.ngc.orchestration.connectors.{AuthConnector, GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
-import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.time.TaxYear
 
 import scala.concurrent.Future._
 import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.HeaderCarrier
 
 
 case class OrchestrationServiceRequest(requestLegacy: Option[JsValue], request: Option[OrchestrationRequest])

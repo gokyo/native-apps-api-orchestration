@@ -19,9 +19,9 @@ package uk.gov.hmrc.ngc.orchestration.connectors
 import play.api.Logger
 import play.api.libs.json._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
-import uk.gov.hmrc.play.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
 
 
 trait GenericConnector {
@@ -35,19 +35,19 @@ trait GenericConnector {
   def logHC(hc: HeaderCarrier, path:String) =   Logger.info(s"transport: HC received is ${hc.authorization} for path $path")
 
 
-  def doGet(host:String, path:String, port:Int, hc: HeaderCarrier): Future[JsValue] = {
+  def doGet(host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     logHC(hc, s"transport: HC received is ${hc.authorization} for path $path")
     http.GET[JsValue](buildUrl(host, port, path))
   }
 
-  def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier): Future[JsValue] = {
+  def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     logHC(hc, s"transport: HC received is ${hc.authorization} for path $path")
     http.POST[JsValue, JsValue](buildUrl(host, port, path), json)
   }
 
-  def doGetRaw(host:String, path:String, port:Int, hc: HeaderCarrier): Future[HttpResponse] = {
+  def doGetRaw(host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[HttpResponse] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     http.GET(buildUrl(host, port, path))
   }

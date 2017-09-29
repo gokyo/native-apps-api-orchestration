@@ -4,20 +4,16 @@ object AppDependencies {
   import play.core.PlayVersion
   import play.sbt.PlayImport._
 
-  private val microserviceBootstrapVersion = "5.15.0"
-  private val playAuthVersion = "4.3.0"
-  private val playHealthVersion = "2.1.0"
-  private val playJsonLoggerVersion = "3.0.0"
-  private val playUrlBindersVersion = "2.1.0"
-  private val playConfigVersion = "4.3.0"
+  private val microserviceBootstrapVersion = "6.9.0"
+  private val playUiVersion = "7.8.0"
   private val domainVersion = "4.1.0"
-  private val playHmrcApiVersion = "1.4.0"
+  private val playHmrcApiVersion = "2.0.0"
   private val hmrcEmailAddressVersion = "1.1.0"
-  private val microserviceAsyncVersion = "1.3.0"
+  private val microserviceAsyncVersion = "2.0.0"
   private val reactiveMongoVersion = "5.2.0"
   private val taxYearVersion = "0.3.0"
 
-  private val hmrcTestVersion = "2.3.0"
+  private val hmrcTestVersion = "2.4.0"
   private val mockitoVersion = "2.10.0"
   private val pegdownVersion = "1.6.0"
   private val scalaTestVersion = "3.0.4"
@@ -26,14 +22,10 @@ object AppDependencies {
   val compile = Seq(
     ws,
     "uk.gov.hmrc" %% "microservice-bootstrap" % microserviceBootstrapVersion,
-    "uk.gov.hmrc" %% "play-authorisation" % playAuthVersion,
     "uk.gov.hmrc" %% "microservice-async" % microserviceAsyncVersion,
-    "uk.gov.hmrc" %% "play-health" % playHealthVersion,
-    "uk.gov.hmrc" %% "play-url-binders" % playUrlBindersVersion,
-    "uk.gov.hmrc" %% "play-config" % playConfigVersion,
-    "uk.gov.hmrc" %% "play-json-logger" % playJsonLoggerVersion,
     "uk.gov.hmrc" %% "domain" % domainVersion,
     "uk.gov.hmrc" %% "play-hmrc-api" % playHmrcApiVersion,
+    "uk.gov.hmrc" %% "play-ui" % playUiVersion,
     "uk.gov.hmrc" %% "emailaddress" % hmrcEmailAddressVersion,
     "uk.gov.hmrc" %% "play-reactivemongo" % reactiveMongoVersion,
     "uk.gov.hmrc" %% "tax-year" % taxYearVersion

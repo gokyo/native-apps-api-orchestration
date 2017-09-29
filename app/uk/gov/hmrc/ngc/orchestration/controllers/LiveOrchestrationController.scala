@@ -33,15 +33,16 @@ import uk.gov.hmrc.ngc.orchestration.services.{LiveOrchestrationService, PreFlig
 import uk.gov.hmrc.play.asyncmvc.model.AsyncMvcSession
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext
-import uk.gov.hmrc.play.http.{HeaderCarrier, NotFoundException}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 import uk.gov.hmrc.time.DateTimeUtils
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
+import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException}
+import uk.gov.hmrc.play.HeaderCarrierConverter
 
 
-class BadRequestException(message:String) extends uk.gov.hmrc.play.http.HttpException(message, 400)
+class BadRequestException(message:String) extends uk.gov.hmrc.http.HttpException(message, 400)
 
 trait ErrorHandling {
   self: BaseController =>
@@ -136,7 +137,7 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
   def preFlightCheck(journeyId:Option[String]): Action[JsValue] = accessControlOff.validateAcceptWithAuth(acceptHeaderValidationRules, None).async(BodyParsers.parse.json) {
     implicit request =>
       errorWrapper {
-        implicit val hc = HeaderCarrier.fromHeadersAndSession(request.headers, None)
+        implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
         implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
         Json.toJson(request.body).asOpt[PreFlightRequest].
           fold(Future.successful(BadRequest("Failed to parse request!"))) { preFlightRequest =>
@@ -154,7 +155,7 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
 
   def orchestrate(nino: Nino, journeyId: Option[String] = None): Action[AnyContent] = accessControl.validateAcceptWithAuth(acceptHeaderValidationRules, Some(nino)).async {
     implicit authenticated =>
-      implicit val hc = HeaderCarrier.fromHeadersAndSession(authenticated.request.headers, None)
+      implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(authenticated.request.headers, None)
       implicit val req = authenticated.request
       implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
 
@@ -187,7 +188,7 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
       withAudit("poll", Map("nino" -> nino.value)) {
         errorWrapper {
 
-          implicit val hc = HeaderCarrier.fromHeadersAndSession(authenticated.request.headers, None)
+          implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(authenticated.request.headers, None)
           implicit val req = authenticated.request
           implicit val authority = authenticated.authority
           implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
@@ -304,7 +305,7 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
   override def preFlightCheck(journeyId:Option[String]): Action[JsValue] = accessControlOff.validateAcceptWithAuth(acceptHeaderValidationRules, None).async(BodyParsers.parse.json) {
     implicit request =>
       errorWrapper {
-        implicit val hc = HeaderCarrier.fromHeadersAndSession(request.headers, None).withExtraHeaders("X-MOBILE-USER-ID" -> request.headers.get("X-MOBILE-USER-ID").getOrElse("404893573708"))
+        implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None).withExtraHeaders("X-MOBILE-USER-ID" -> request.headers.get("X-MOBILE-USER-ID").getOrElse("404893573708"))
         implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
 
         Json.toJson(request.body).asOpt[PreFlightRequest].
@@ -323,7 +324,7 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
   // Must override the startup call since live controller talks to a queue.
   override def orchestrate(nino: Nino, journeyId: Option[String] = None): Action[AnyContent] = accessControlOff.validateAcceptWithAuth(acceptHeaderValidationRules, Some(nino)).async {
     implicit authenticated =>
-      implicit val hc = HeaderCarrier.fromHeadersAndSession(authenticated.request.headers, None)
+      implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(authenticated.request.headers, None)
       implicit val req = authenticated.request
 
       errorWrapper {
