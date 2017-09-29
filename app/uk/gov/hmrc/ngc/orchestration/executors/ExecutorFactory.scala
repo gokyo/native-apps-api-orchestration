@@ -209,22 +209,25 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
   override val cacheTime: Option[Long] = None
 
   override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
-    val auditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
-    val newFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "details").asOpt[Map[String, String]])
-    val oldFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
-    val extraDetails: Option[Map[String, String]] = newFormatExtraDetails.orElse(oldFormatExtraDetails)
+    val maybeAuditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
+    val maybeNewFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "details").asOpt[Map[String, String]])
+    val maybeOldFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
+    val maybeExtraDetails: Option[Map[String, String]] = maybeNewFormatExtraDetails.orElse(maybeOldFormatExtraDetails)
 
-    val valid = auditType.isDefined && extraDetails.isDefined
+    val maybeEvent: Option[DataEvent] = for {
+      auditType <- maybeAuditType
+      extraDetails <- maybeExtraDetails
+    } yield DataEvent("native-apps", auditType, tags = hc.toAuditTags("explicitAuditEvent", auditType),
+      detail = hc.toAuditDetails(extraDetails.toSeq: _*))
 
-    val responseData = if (valid) {
-      val dataEvent = DataEvent("native-apps", auditType.get, tags = hc.toAuditTags("explicitAuditEvent", auditType.get),
-        detail = hc.toAuditDetails(extraDetails.get.toSeq: _*))
-      audit.sendDataEvent(dataEvent)
-      None
-    } else {
-      Option(Json.parse("""{"error": "Bad Request"}"""))
-    }
-    Future(Option(ExecutorResponse(executorName, responseData = responseData, failure = Some(!valid))))
+    val response = maybeEvent.map { event =>
+      audit.sendDataEvent(event)
+      ExecutorResponse(executorName, failure = Some(false))
+    }.getOrElse(
+      ExecutorResponse(executorName, responseData = Some(Json.parse("""{"error": "Bad Request"}""")), failure = Some(true))
+    )
+
+    Future.successful(Some(response))
   }
 }
 
