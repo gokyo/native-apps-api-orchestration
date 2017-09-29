@@ -26,9 +26,10 @@ New format. `data.details` contains arbitrary String properties that are passed 
       "name": "ngc-audit-event",
       "data": {
         "auditType": "TCSPayment",
-        "details": {
+        "detail": {
           "nino": "some-nino",
-          "someArbitraryDetailName": "someArbitraryDetailValue"
+          "ctcFrequency": "WEEKLY",
+          "wtcFrequency": "NONE"
         }
       }
     }

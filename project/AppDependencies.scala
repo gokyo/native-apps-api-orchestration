@@ -17,10 +17,11 @@ object AppDependencies {
   private val reactiveMongoVersion = "5.2.0"
   private val taxYearVersion = "0.3.0"
 
-  private val pegdownVersion = "1.6.0"
-  private val wireMockVersion = "2.8.0"
   private val hmrcTestVersion = "2.3.0"
+  private val mockitoVersion = "2.10.0"
+  private val pegdownVersion = "1.6.0"
   private val scalaTestVersion = "3.0.4"
+  private val wireMockVersion = "2.8.0"
 
   val compile = Seq(
     ws,
@@ -49,7 +50,8 @@ object AppDependencies {
         "uk.gov.hmrc" %% "hmrctest" % hmrcTestVersion % scope,
         "org.scalatest" %% "scalatest" % scalaTestVersion % scope,
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
-        "com.typesafe.play" %% "play-test" % PlayVersion.current % scope
+        "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
+        "org.mockito" % "mockito-core" % mockitoVersion % scope
       )
     }.test
   }
@@ -64,7 +66,7 @@ object AppDependencies {
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
         "com.github.tomakehurst" % "wiremock" % wireMockVersion % scope,
-        "org.mockito" % "mockito-core" % "2.10.0" % scope,
+        "org.mockito" % "mockito-core" % mockitoVersion % scope,
         "org.scalatestplus.play" %% "scalatestplus-play" % "2.0.1" % scope
       )
     }.test

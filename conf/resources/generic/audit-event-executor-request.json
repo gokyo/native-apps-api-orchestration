@@ -3,7 +3,11 @@
     {
       "name": "ngc-audit-event",
       "data": {
-        "nino":"CS700100A",
+        "details": {
+          "nino": "CS700100A",
+          "ctcFrequency": "WEEKLY",
+          "wtcFrequency": "NONE"
+        },
         "auditType":"TCSPayments"
       }
     }

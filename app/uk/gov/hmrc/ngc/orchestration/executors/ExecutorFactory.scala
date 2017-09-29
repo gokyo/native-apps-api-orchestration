@@ -202,21 +202,23 @@ case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
   override def connector: GenericConnector = GenericConnector
 }
 
-case class AuditEventExecutor() extends EventExecutor {
+case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector)) extends EventExecutor {
 
   override val executorName: String = "ngc-audit-event"
   override val executionType: String = "EVENT"
   override val cacheTime: Option[Long] = None
 
-  val audit: Audit = new Audit("native-apps", MicroserviceAuditConnector)
-
   override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
-    val nino: Option[String] = data.flatMap(json => (json \ "nino").asOpt[String])
     val auditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
-    val valid = auditType.isDefined && nino.isDefined
+    val newFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "details").asOpt[Map[String, String]])
+    val oldFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
+    val extraDetails: Option[Map[String, String]] = newFormatExtraDetails.orElse(oldFormatExtraDetails)
+
+    val valid = auditType.isDefined && extraDetails.isDefined
+
     val responseData = if (valid) {
       val dataEvent = DataEvent("native-apps", auditType.get, tags = hc.toAuditTags("explicitAuditEvent", auditType.get),
-        detail = hc.toAuditDetails("nino" -> nino.get, "auditType" -> auditType.get))
+        detail = hc.toAuditDetails(extraDetails.get.toSeq: _*))
       audit.sendDataEvent(dataEvent)
       None
     } else {

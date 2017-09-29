@@ -65,7 +65,7 @@ trait GenericOrchestrationSetup {
   lazy val testPushNotificationRespondToMessageExecutor = new TestPushNotificationRespondToMessageExecutor(testSuccessGenericConnector)
   lazy val testClaimantDetailsServiceExecutor = new TestClaimantDetailsServiceExecutor(testSuccessGenericConnector)
   lazy val testAuditConnector = new TestAuditConnector()
-  lazy val testAuditEventExecutor = new TestAuditEventExecutor(new Audit("test-app", testAuditConnector))
+  lazy val testAuditEventExecutor = new AuditEventExecutor(new Audit("test-app", testAuditConnector))
 
 
   lazy val testEventExecutors = Map(testAuditEventExecutor.executorName -> testAuditEventExecutor)
@@ -147,10 +147,6 @@ class TestVersionCheckExecutor(testGenericConnector: GenericConnector) extends V
 
 class TestFeedbackExecutor(testGenericConnector: GenericConnector) extends DeskProFeedbackExecutor {
   override def connector: GenericConnector = testGenericConnector
-}
-
-class TestAuditEventExecutor(testAudit: Audit) extends AuditEventExecutor {
-  override val audit = testAudit
 }
 
 class TestPushNotificationGetMessageExecutor(testGenericConnector: GenericConnector) extends PushNotificationGetMessageExecutor {
