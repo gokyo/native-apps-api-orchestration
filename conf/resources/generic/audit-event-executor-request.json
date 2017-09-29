@@ -3,7 +3,7 @@
     {
       "name": "ngc-audit-event",
       "data": {
-        "details": {
+        "detail": {
           "nino": "CS700100A",
           "ctcFrequency": "WEEKLY",
           "wtcFrequency": "NONE"

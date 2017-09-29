@@ -210,15 +210,15 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
 
   override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
     val maybeAuditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
-    val maybeNewFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "details").asOpt[Map[String, String]])
-    val maybeOldFormatExtraDetails: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
-    val maybeExtraDetails: Option[Map[String, String]] = maybeNewFormatExtraDetails.orElse(maybeOldFormatExtraDetails)
+    val maybeNewFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "detail").asOpt[Map[String, String]])
+    val maybeOldFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
+    val maybeExtraDetail: Option[Map[String, String]] = maybeNewFormatExtraDetail.orElse(maybeOldFormatExtraDetail)
 
     val maybeEvent: Option[DataEvent] = for {
       auditType <- maybeAuditType
-      extraDetails <- maybeExtraDetails
+      extraDetail <- maybeExtraDetail
     } yield DataEvent("native-apps", auditType, tags = hc.toAuditTags("explicitAuditEvent", auditType),
-      detail = hc.toAuditDetails(extraDetails.toSeq: _*))
+      detail = hc.toAuditDetails(extraDetail.toSeq: _*))
 
     val response = maybeEvent.map { event =>
       audit.sendDataEvent(event)

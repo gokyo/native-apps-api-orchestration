@@ -20,19 +20,18 @@ import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{verify, when}
 import org.scalatest.mockito.MockitoSugar
+import org.scalatest.{AsyncWordSpec, Matchers, OptionValues}
 import play.api.libs.json.Json
 import uk.gov.hmrc.play.audit.http.connector.{AuditConnector, AuditResult}
 import uk.gov.hmrc.play.audit.model.{Audit, AuditEvent, DataEvent}
 import uk.gov.hmrc.play.http.HeaderCarrier
-import uk.gov.hmrc.play.test.UnitSpec
 
-import scala.concurrent.ExecutionContext.{global => ec}
 import scala.concurrent.{ExecutionContext, Future}
 
-class AuditEventExecutorSpec extends UnitSpec with MockitoSugar {
+class AuditEventExecutorSpec extends AsyncWordSpec with Matchers with MockitoSugar with OptionValues {
 
   "execute" should {
-    "Send an audit event with the correct details when the new JSON format is used" in {
+    "Send an audit event with the correct detail when the new JSON format is used" in {
       val mockAuditConnector = mock[AuditConnector]
 
       when(mockAuditConnector.sendEvent(any[AuditEvent])(any[HeaderCarrier], any[ExecutionContext])).thenReturn(Future successful AuditResult.Success)
@@ -42,7 +41,7 @@ class AuditEventExecutorSpec extends UnitSpec with MockitoSugar {
         """
           |{
           |  "auditType": "TCSPayment",
-          |  "details": {
+          |  "detail": {
           |    "nino": "some-nino",
           |    "someArbitraryDetailName": "someArbitraryDetailValue",
           |    "ctcFrequency": "WEEKLY",
@@ -51,21 +50,23 @@ class AuditEventExecutorSpec extends UnitSpec with MockitoSugar {
           |}
         """.stripMargin)
       val hc = HeaderCarrier()
-      auditEventExecutor.execute(None, Some(data), "data-is-used-not-this-nino-arg", None)(hc, ec)
+      auditEventExecutor.execute(None, Some(data), "data-is-used-not-this-nino-arg", None)(hc, executionContext).map { executorResponse =>
+        executorResponse.value.failure.value shouldBe false
 
-      val argument = ArgumentCaptor.forClass(classOf[AuditEvent])
-      verify(mockAuditConnector).sendEvent(argument.capture())(any[HeaderCarrier], any[ExecutionContext])
+        val argument = ArgumentCaptor.forClass(classOf[AuditEvent])
+        verify(mockAuditConnector).sendEvent(argument.capture())(any[HeaderCarrier], any[ExecutionContext])
 
-      val actualAuditEvent: AuditEvent = argument.getValue
-      actualAuditEvent match {
-        case actualDataEvent: DataEvent =>
-          actualDataEvent.auditType shouldBe "TCSPayment"
-          actualDataEvent.detail.get("nino") shouldBe Some("some-nino")
-          actualDataEvent.detail.get("someArbitraryDetailName") shouldBe Some("someArbitraryDetailValue")
-          actualDataEvent.detail.get("ctcFrequency") shouldBe Some("WEEKLY")
-          actualDataEvent.detail.get("wtcFrequency") shouldBe Some("NONE")
-        case _ =>
-          fail(s"audited event was not a DataEvent: $actualAuditEvent")
+        val actualAuditEvent: AuditEvent = argument.getValue
+        actualAuditEvent match {
+          case actualDataEvent: DataEvent =>
+            actualDataEvent.auditType shouldBe "TCSPayment"
+            actualDataEvent.detail.get("nino") shouldBe Some("some-nino")
+            actualDataEvent.detail.get("someArbitraryDetailName") shouldBe Some("someArbitraryDetailValue")
+            actualDataEvent.detail.get("ctcFrequency") shouldBe Some("WEEKLY")
+            actualDataEvent.detail.get("wtcFrequency") shouldBe Some("NONE")
+          case _ =>
+            fail(s"audited event was not a DataEvent: $actualAuditEvent")
+        }
       }
     }
 
@@ -83,18 +84,20 @@ class AuditEventExecutorSpec extends UnitSpec with MockitoSugar {
           |}
         """.stripMargin)
       val hc = HeaderCarrier()
-      auditEventExecutor.execute(None, Some(data), "data-is-used-not-this-nino-arg", None)(hc, ec)
+      auditEventExecutor.execute(None, Some(data), "data-is-used-not-this-nino-arg", None)(hc, executionContext).map { executorResponse =>
+        executorResponse.value.failure.value shouldBe false
 
-      val argument = ArgumentCaptor.forClass(classOf[AuditEvent])
-      verify(mockAuditConnector).sendEvent(argument.capture())(any[HeaderCarrier], any[ExecutionContext])
+        val argument = ArgumentCaptor.forClass(classOf[AuditEvent])
+        verify(mockAuditConnector).sendEvent(argument.capture())(any[HeaderCarrier], any[ExecutionContext])
 
-      val actualAuditEvent: AuditEvent = argument.getValue
-      actualAuditEvent match {
-        case actualDataEvent: DataEvent =>
-          actualDataEvent.auditType shouldBe "TCSPayment"
-          actualDataEvent.detail.get("nino") shouldBe Some("some-nino")
-        case _ =>
-          fail(s"audited event was not a DataEvent: $actualAuditEvent")
+        val actualAuditEvent: AuditEvent = argument.getValue
+        actualAuditEvent match {
+          case actualDataEvent: DataEvent =>
+            actualDataEvent.auditType shouldBe "TCSPayment"
+            actualDataEvent.detail.get("nino") shouldBe Some("some-nino")
+          case _ =>
+            fail(s"audited event was not a DataEvent: $actualAuditEvent")
+        }
       }
     }
   }
