@@ -202,27 +202,32 @@ case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
   override def connector: GenericConnector = GenericConnector
 }
 
-case class AuditEventExecutor() extends EventExecutor {
+case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector)) extends EventExecutor {
 
   override val executorName: String = "ngc-audit-event"
   override val executionType: String = "EVENT"
   override val cacheTime: Option[Long] = None
 
-  val audit: Audit = new Audit("native-apps", MicroserviceAuditConnector)
-
   override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
-    val nino: Option[String] = data.flatMap(json => (json \ "nino").asOpt[String])
-    val auditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
-    val valid = auditType.isDefined && nino.isDefined
-    val responseData = if (valid) {
-      val dataEvent = DataEvent("native-apps", auditType.get, tags = hc.toAuditTags("explicitAuditEvent", auditType.get),
-        detail = hc.toAuditDetails("nino" -> nino.get, "auditType" -> auditType.get))
-      audit.sendDataEvent(dataEvent)
-      None
-    } else {
-      Option(Json.parse("""{"error": "Bad Request"}"""))
-    }
-    Future(Option(ExecutorResponse(executorName, responseData = responseData, failure = Some(!valid))))
+    val maybeAuditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
+    val maybeNewFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "detail").asOpt[Map[String, String]])
+    val maybeOldFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
+    val maybeExtraDetail: Option[Map[String, String]] = maybeNewFormatExtraDetail.orElse(maybeOldFormatExtraDetail)
+
+    val maybeEvent: Option[DataEvent] = for {
+      auditType <- maybeAuditType
+      extraDetail <- maybeExtraDetail
+    } yield DataEvent("native-apps", auditType, tags = hc.toAuditTags("explicitAuditEvent", auditType),
+      detail = hc.toAuditDetails(extraDetail.toSeq: _*))
+
+    val response = maybeEvent.map { event =>
+      audit.sendDataEvent(event)
+      ExecutorResponse(executorName, failure = Some(false))
+    }.getOrElse(
+      ExecutorResponse(executorName, responseData = Some(Json.parse("""{"error": "Bad Request"}""")), failure = Some(true))
+    )
+
+    Future.successful(Some(response))
   }
 }
 
