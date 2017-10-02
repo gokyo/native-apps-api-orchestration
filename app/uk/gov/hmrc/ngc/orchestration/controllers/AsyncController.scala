@@ -24,11 +24,11 @@ import uk.gov.hmrc.msasync.repository.AsyncRepository
 import uk.gov.hmrc.ngc.orchestration.controllers.action.AccountAccessControlWithHeaderCheck
 import uk.gov.hmrc.play.asyncmvc.async.Cache
 import uk.gov.hmrc.play.asyncmvc.model.{TaskCache, ViewCodes}
-import uk.gov.hmrc.play.http.HeaderCarrier
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
+import uk.gov.hmrc.http.HeaderCarrier
 
 case class AsyncResponse(value:JsObject, nino:Nino)
 object AsyncResponse {

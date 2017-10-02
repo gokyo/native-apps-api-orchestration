@@ -28,9 +28,9 @@ import play.api.test.Helpers._
 import play.api.test.{FakeApplication, FakeRequest}
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.{NotFoundException, Upstream4xxResponse}
 import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, PreFlightCheckResponse}
 import uk.gov.hmrc.play.asyncmvc.model.AsyncMvcSession
-import uk.gov.hmrc.play.http._
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
 import scala.concurrent.ExecutionContext.Implicits.global

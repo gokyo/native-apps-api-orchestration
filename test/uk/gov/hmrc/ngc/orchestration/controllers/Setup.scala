@@ -24,19 +24,17 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost}
 import uk.gov.hmrc.mongo.{DatabaseUpdate, Updated}
 import uk.gov.hmrc.msasync.repository.{AsyncRepository, TaskCachePersist}
 import uk.gov.hmrc.ngc.orchestration.config.{MicroserviceAuditConnector, WSHttp}
 import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.controllers.action.{AccountAccessControl, AccountAccessControlCheckOff, AccountAccessControlWithHeaderCheck}
-import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, OrchestrationRequest}
-import uk.gov.hmrc.ngc.orchestration.executors.{Executor, ExecutorFactory, VersionCheckExecutor}
-import uk.gov.hmrc.ngc.orchestration.services.{LiveOrchestrationService, OrchestrationService, SandboxOrchestrationService}
+import uk.gov.hmrc.ngc.orchestration.domain.Accounts
+import uk.gov.hmrc.ngc.orchestration.services.{LiveOrchestrationService, OrchestrationService}
 import uk.gov.hmrc.play.asyncmvc.model.TaskCache
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.auth.microservice.connectors.ConfidenceLevel
-import uk.gov.hmrc.play.http._
-import uk.gov.hmrc.play.http.ws.WSPost
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -470,7 +468,7 @@ class TestAuthConnector(nino: Option[Nino], routeTwoFactor:Boolean=false, genera
 
   override def serviceConfidenceLevel: ConfidenceLevel = {println(" A..."); throw new Exception("Must not be invoked")}
 
-  override def http: HttpGet with WSPost = {println(" B..."); throw new Exception("Must not be invoked")}
+  override def http: HttpPost with HttpGet = {println(" B..."); throw new Exception("Must not be invoked")}
 
   override def accounts(journeyId:Option[String])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Accounts] = {
     println(" routeTwoFactor is " + routeTwoFactor)
@@ -506,7 +504,7 @@ class TestServiceFailureGenericConnector(pathFailMap: Map[String, Boolean], upgr
 
   override def http: HttpPost with HttpGet = WSHttp
 
-  override def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier): Future[JsValue] = {
+  override def doPost(json: JsValue, host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] =  {
     val versionCheck = "/profile/native-app/version-check"
 
     path match {
@@ -538,7 +536,7 @@ class TestServiceFailureGenericConnector(pathFailMap: Map[String, Boolean], upgr
 
   def isSuccess(key: String): Boolean = pathFailMap.getOrElse(key,false)
 
-  override def doGet(host: String, path: String, port: Int, hc: HeaderCarrier): Future[JsValue] = {
+  override def doGet(host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     val result = path match {
       case "/income/CS700100A/tax-summary/2017" => passFail(taxSummary, isSuccess(path))
       case "/income/tax-credits/submission/state/enabled" => passFail(state, isSuccess(path))

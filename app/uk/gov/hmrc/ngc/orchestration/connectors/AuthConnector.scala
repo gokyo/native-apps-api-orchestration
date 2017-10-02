@@ -17,23 +17,24 @@
 package uk.gov.hmrc.ngc.orchestration.connectors
 
 import java.util.UUID
+
 import org.joda.time.DateTime
-import uk.gov.hmrc.ngc.orchestration.config.WSHttp
-import uk.gov.hmrc.ngc.orchestration.domain.{CredentialStrength, Accounts}
 import play.api.Play
-import play.api.libs.json.{Json, JsValue}
-import uk.gov.hmrc.play.config.ServicesConfig
-import uk.gov.hmrc.play.http.{HttpPost, HeaderCarrier, HttpGet}
-import scala.concurrent.{ExecutionContext, Future}
+import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.domain.{Nino, SaUtr}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost}
+import uk.gov.hmrc.ngc.orchestration.config.WSHttp
+import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, CredentialStrength}
 import uk.gov.hmrc.play.auth.microservice.connectors.ConfidenceLevel
+import uk.gov.hmrc.play.config.ServicesConfig
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
-class FailToMatchTaxIdOnAuth(message:String) extends uk.gov.hmrc.play.http.HttpException(message, 401)
-class NinoNotFoundOnAccount(message:String) extends uk.gov.hmrc.play.http.HttpException(message, 401)
-class AccountWithLowCL(message:String) extends uk.gov.hmrc.play.http.HttpException(message, 401)
-class AccountWithWeakCredStrength(message:String) extends uk.gov.hmrc.play.http.HttpException(message, 401)
+class FailToMatchTaxIdOnAuth(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class NinoNotFoundOnAccount(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class AccountWithLowCL(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class AccountWithWeakCredStrength(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
 
 
 case class BearerToken(authToken: String, expiry: DateTime) {

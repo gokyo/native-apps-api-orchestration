@@ -18,12 +18,12 @@ package uk.gov.hmrc.ngc.orchestration.executors
 
 import play.api.libs.json._
 import play.api.{Configuration, Logger, Play}
+import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier}
 import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.AuditExtensions._
 import uk.gov.hmrc.play.audit.model.{Audit, DataEvent}
-import uk.gov.hmrc.play.http.{GatewayTimeoutException, HeaderCarrier}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}

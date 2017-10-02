@@ -18,9 +18,9 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import play.api.libs.json._
 import play.api.{Configuration, Logger, Play}
+import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse}
 import uk.gov.hmrc.ngc.orchestration.connectors.{AuthConnector, GenericConnector}
 import uk.gov.hmrc.ngc.orchestration.controllers.ResponseCode
-import uk.gov.hmrc.play.http.{HeaderCarrier, Upstream4xxResponse}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -103,7 +103,7 @@ case class TaxCreditSummary(authConnector:AuthConnector, connector: GenericConne
       connector.doGet(host, s"/income/$nino/tax-credits/tax-credits-decision${buildJourneyQueryParam(journeyId)}", port, hc).map(res => {
         Some(Result("decision", res))
       }).recover {
-        case ex: uk.gov.hmrc.play.http.NotFoundException =>
+        case ex: uk.gov.hmrc.http.NotFoundException =>
           Logger.warn(s"${logJourneyId(journeyId)} - 404 returned for tax-credits-decision.")
           throw ex
 
