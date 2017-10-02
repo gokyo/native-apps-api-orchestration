@@ -18,7 +18,7 @@ audit-event
 
 *  **Request body**
 
-New format. `data.details` contains arbitrary String properties that are passed through unmodified as the `details` of the Splunk event. 
+New format. `data.detail` contains arbitrary String properties that are passed through unmodified as the `detail` of the Splunk event. 
 ```json
 {
   "eventRequest": [
