@@ -16,8 +16,9 @@
 
 package uk.gov.hmrc.ngc.orchestration.executors
 
+import org.joda.time.DateTime
 import play.api.libs.json._
-import play.api.{Configuration, Logger, Play}
+import play.api.{Configuration, Logger, LoggerLike, Play}
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier}
 import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
@@ -25,6 +26,7 @@ import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.AuditExtensions._
 import uk.gov.hmrc.play.audit.model.{Audit, DataEvent}
 
+import scala.collection.Seq
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -202,7 +204,7 @@ case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
   override def connector: GenericConnector = GenericConnector
 }
 
-case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector)) extends EventExecutor {
+case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
 
   override val executorName: String = "ngc-audit-event"
   override val executionType: String = "EVENT"
@@ -214,11 +216,20 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
     val maybeOldFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
     val maybeExtraDetail: Option[Map[String, String]] = maybeNewFormatExtraDetail.orElse(maybeOldFormatExtraDetail)
 
-    val maybeEvent: Option[DataEvent] = for {
+    val maybeEvent: Option[DataEvent] = (for {
       auditType <- maybeAuditType
       extraDetail <- maybeExtraDetail
-    } yield DataEvent("native-apps", auditType, tags = hc.toAuditTags("explicitAuditEvent", auditType),
-      detail = hc.toAuditDetails(extraDetail.toSeq: _*))
+    } yield DataEvent(
+      "native-apps",
+      auditType,
+      tags = hc.toAuditTags("explicitAuditEvent", auditType),
+      detail = hc.toAuditDetails(extraDetail.toSeq: _*)
+    )).map{ event: DataEvent =>
+      val maybeGeneratedAt = readGeneratedAt(data, event.eventId)
+      maybeGeneratedAt
+        .map(generatedAt => event.copy(generatedAt = generatedAt))
+        .getOrElse(event)
+    }
 
     val response = maybeEvent.map { event =>
       audit.sendDataEvent(event)
@@ -228,6 +239,21 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
     )
 
     Future.successful(Some(response))
+  }
+
+  private def readGeneratedAt(data: Option[JsValue], eventId: String): Option[DateTime] = {
+    import uk.gov.hmrc.ngc.orchestration.json.IsoDateTimeReads.isoDateTimeReads
+
+    data
+      .flatMap(json => (json \ "generatedAt").asOpt[JsValue])
+      .flatMap { generatedAtJsValue: JsValue =>
+        generatedAtJsValue.validate[DateTime](isoDateTimeReads) match {
+          case JsSuccess(dateTime, _) => Some(dateTime)
+          case _: JsError =>
+            logger.warn(s"""Couldn't parse generatedAt timestamp $generatedAtJsValue, defaulting to now for audit event $eventId""")
+            None
+        }
+      }
   }
 }
 
