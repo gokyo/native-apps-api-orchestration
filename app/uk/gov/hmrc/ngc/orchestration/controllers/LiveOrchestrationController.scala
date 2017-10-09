@@ -43,6 +43,7 @@ import uk.gov.hmrc.play.HeaderCarrierConverter
 
 
 class BadRequestException(message:String) extends uk.gov.hmrc.http.HttpException(message, 400)
+class ServiceUnavailable(message: String) extends uk.gov.hmrc.http.HttpException(message, 503)
 
 trait ErrorHandling {
   self: BaseController =>
@@ -64,6 +65,11 @@ trait ErrorHandling {
       case ex: NinoNotFoundOnAccount =>
         log("User has no NINO. Unauthorized!")
         Unauthorized(Json.toJson(ErrorUnauthorizedNoNino))
+
+      case ex: ServiceUnavailable ⇒
+        log("Shuttered!")
+        val response = ShutteringResponse(ex.message)
+        Status(response.httpStatusCode)(Json.toJson(response))
 
       case e: Exception =>
         Logger.error(s"Native Error - $app Internal server error: ${e.getMessage}", e)
@@ -124,11 +130,28 @@ trait GenericServiceCheck {
 
 }
 
+trait Shuttering {
+
+  self: NativeAppsOrchestrationController ⇒
+
+  def isShuttered = Play.current.configuration.getBoolean("shuttering.enabled").getOrElse(false)
+  def message = Play.current.configuration.getString("shuttering.message").getOrElse("")
+
+  def shutteringCheck(endpoint: String)(func: ⇒ Future[mvc.Result]) = {
+    if(isShuttered) {
+      Logger.info(s"$app $endpoint shuttering enabled")
+      Future.failed(new ServiceUnavailable(message))
+    }
+    else
+      func
+  }
+}
+
 trait SecurityCheck {
   def checkSecurity:Boolean
 }
 
-trait NativeAppsOrchestrationController extends AsyncController with SecurityCheck with Auditor with GenericServiceCheck {
+trait NativeAppsOrchestrationController extends AsyncController with SecurityCheck with Auditor with GenericServiceCheck with Shuttering {
   val service: OrchestrationService
   val accessControl: AccountAccessControlWithHeaderCheck
   val accessControlOff: AccountAccessControlWithHeaderCheck
@@ -137,17 +160,19 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
   def preFlightCheck(journeyId:Option[String]): Action[JsValue] = accessControlOff.validateAcceptWithAuth(acceptHeaderValidationRules, None).async(BodyParsers.parse.json) {
     implicit request =>
       errorWrapper {
-        implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
-        implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
-        Json.toJson(request.body).asOpt[PreFlightRequest].
-          fold(Future.successful(BadRequest("Failed to parse request!"))) { preFlightRequest =>
+        shutteringCheck("preFlightCheck") {
+          implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
+          implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
+          Json.toJson(request.body).asOpt[PreFlightRequest].
+            fold(Future.successful(BadRequest("Failed to parse request!"))) { preFlightRequest =>
 
-            hc.authorization match {
-              case Some(auth) => service.preFlightCheck(preFlightRequest, journeyId).map(
-                response => Ok(Json.toJson(response)).withSession(authToken -> auth.value)
-              )
+              hc.authorization match {
+                case Some(auth) => service.preFlightCheck(preFlightRequest, journeyId).map(
+                  response => Ok(Json.toJson(response)).withSession(authToken -> auth.value)
+                )
 
-              case _ => Future.failed(new Exception("Failed to resolve authentication from HC!"))
+                case _ => Future.failed(new Exception("Failed to resolve authentication from HC!"))
+              }
             }
         }
       }
@@ -158,23 +183,23 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
       implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(authenticated.request.headers, None)
       implicit val req = authenticated.request
       implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
-
       errorWrapper {
-        validate { validatedRequest =>
+        shutteringCheck("orchestrate") {
+          validate { validatedRequest =>
+            // Do not allow more than one task to be executing - if task is running then poll status will be returned.
+            asyncActionWrapper.async(callbackWithStatus) {
+              flag =>
 
-          // Do not allow more than one task to be executing - if task is running then poll status will be returned.
-          asyncActionWrapper.async(callbackWithStatus) {
-            flag =>
+                // Async function wrapper responsible for executing below code onto a background queue.
+                asyncWrapper(callbackWithStatus) {
+                  headerCarrier =>
+                    Logger.info(s"Background HC: ${hc.authorization.fold("not found")(_.value)} for Journey Id $journeyId")
 
-              // Async function wrapper responsible for executing below code onto a background queue.
-              asyncWrapper(callbackWithStatus) {
-                headerCarrier =>
-                  Logger.info(s"Background HC: ${hc.authorization.fold("not found")(_.value)} for Journey Id $journeyId")
-
-                  service.orchestrate(validatedRequest, nino, journeyId).map { response =>
-                    AsyncResponse(response ++ buildResponseCode(ResponseStatus.complete), nino)
-                  }
-              }
+                    service.orchestrate(validatedRequest, nino, journeyId).map { response =>
+                      AsyncResponse(response ++ buildResponseCode(ResponseStatus.complete), nino)
+                    }
+                }
+            }
           }
         }
       }
