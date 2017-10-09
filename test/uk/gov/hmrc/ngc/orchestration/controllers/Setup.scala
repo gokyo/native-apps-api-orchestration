@@ -692,3 +692,25 @@ trait AuthorityTest extends UnitSpec {
     contentAsJson(result) shouldBe TestData.weakCredStrength
   }
 }
+
+trait ShutteringSuccess extends Setup {
+  val controller = new NativeAppsOrchestrationController {
+    val testSessionId = "Shuttering"
+    override def buildUniqueId() = testSessionId
+
+    override val actorName = s"async_native-apps-api-actor_"+testSessionId
+    override def id = "async_native-apps-api-id"
+
+    override val accessControl: AccountAccessControlWithHeaderCheck = testCompositeAction
+    override val accessControlOff: AccountAccessControlWithHeaderCheck = testAccessControlOff
+    override val service: OrchestrationService = testOrchestrationService
+    override val app: String = "Shuttering"
+    override val repository: AsyncRepository = asyncRepository
+    override def checkSecurity: Boolean = true
+    override val auditConnector: AuditConnector = MicroserviceAuditConnector
+    override val maxAgeForSuccess: Long = maxAgeForPollSuccess
+
+    override def isShuttered: Boolean = true
+    override def message: String = "This is a shuttering test"
+  }
+}
