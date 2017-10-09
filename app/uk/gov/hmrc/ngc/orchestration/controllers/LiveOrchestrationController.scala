@@ -43,7 +43,6 @@ import uk.gov.hmrc.play.HeaderCarrierConverter
 
 
 class BadRequestException(message:String) extends uk.gov.hmrc.http.HttpException(message, 400)
-class ServiceUnavailable(message: String) extends uk.gov.hmrc.http.HttpException(message, 503)
 
 trait ErrorHandling {
   self: BaseController =>
@@ -65,11 +64,6 @@ trait ErrorHandling {
       case ex: NinoNotFoundOnAccount =>
         log("User has no NINO. Unauthorized!")
         Unauthorized(Json.toJson(ErrorUnauthorizedNoNino))
-
-      case ex: ServiceUnavailable ⇒
-        log("Shuttered!")
-        val response = ShutteringResponse(ex.message)
-        Status(response.httpStatusCode)(Json.toJson(response))
 
       case e: Exception =>
         Logger.error(s"Native Error - $app Internal server error: ${e.getMessage}", e)
@@ -137,10 +131,11 @@ trait Shuttering {
   def isShuttered = Play.current.configuration.getBoolean("shuttering.enabled").getOrElse(false)
   def message = Play.current.configuration.getString("shuttering.message").getOrElse("")
 
-  def shutteringCheck(endpoint: String)(func: ⇒ Future[mvc.Result]) = {
+  def shutteringCheck(endpoint: String)(func: ⇒ Future[mvc.Result]): Future[Result] = {
     if(isShuttered) {
-      Logger.info(s"$app $endpoint shuttering enabled")
-      Future.failed(new ServiceUnavailable(message))
+      val response = ShutteredResponse(message)
+      Logger.info(s"$app $endpoint shuttered - returning ${response.httpStatusCode}")
+      Future.successful(Status(response.httpStatusCode)(Json.toJson(response)))
     }
     else
       func
