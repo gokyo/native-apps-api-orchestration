@@ -28,5 +28,4 @@ case object MandatoryResponse extends ErrorResponse(500, "MANDATORY", "Mandatory
 
 case object ForbiddenAccess extends ErrorResponse(403, "UNAUTHORIZED", "Access denied!")
 
-case class ShutteringResponse(override val message: String) extends ErrorResponse(503, "SCHEDULED_MAINTENANCE", message)
-
+case class ShutteredResponse(override val message: String) extends ErrorResponse(503, "SCHEDULED_MAINTENANCE", message)
