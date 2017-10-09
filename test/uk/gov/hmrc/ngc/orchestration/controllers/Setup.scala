@@ -693,7 +693,7 @@ trait AuthorityTest extends UnitSpec {
   }
 }
 
-trait ShutteringSuccess extends Setup {
+trait ShutteredSuccess extends Setup {
   val controller = new NativeAppsOrchestrationController {
     val testSessionId = "Shuttering"
     override def buildUniqueId() = testSessionId

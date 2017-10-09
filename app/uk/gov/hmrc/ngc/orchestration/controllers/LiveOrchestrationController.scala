@@ -184,7 +184,7 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
       implicit val req = authenticated.request
       implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
       errorWrapper {
-        shutteringCheck("startUp") {
+        shutteringCheck("orchestrate") {
           validate { validatedRequest =>
             // Do not allow more than one task to be executing - if task is running then poll status will be returned.
             asyncActionWrapper.async(callbackWithStatus) {

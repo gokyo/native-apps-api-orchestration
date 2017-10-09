@@ -96,7 +96,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       status(result) shouldBe 401
     }
 
-    "return 503 http status code with a custom message when shuttering has been enabled" in new ShutteringSuccess {
+    "return 503 http status code with a custom message when shuttering has been enabled" in new ShutteredSuccess {
       val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
       status(result) shouldBe 503
       contentAsJson(result) shouldBe Json.parse("""{"code":"SCHEDULED_MAINTENANCE","message":"This is a shuttering test"}""")
@@ -231,7 +231,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
   }
 
   "Startup service call" should {
-    "return 503 http status code with a custom message when shuttering has been enabled" in new ShutteringSuccess {
+    "return 503 http status code with a custom message when shuttering has been enabled" in new ShutteredSuccess {
       val authToken = "AuthToken" -> "Bearer 123456"
       val authHeader = "Authorization" -> "Bearer 123456"
       val requestWithSessionKeyAndIdNoBody = FakeRequest().withSession(
