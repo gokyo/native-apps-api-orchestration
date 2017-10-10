@@ -210,28 +210,21 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
   override val executionType: String = "EVENT"
   override val cacheTime: Option[Long] = None
 
+  private case class ValidData(auditType: String, extraDetail: Map[String, String])
+
   override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
-    val maybeAuditType: Option[String] = data.flatMap(json => (json \ "auditType").asOpt[String])
-    val maybeNewFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "detail").asOpt[Map[String, String]])
-    val maybeOldFormatExtraDetail: Option[Map[String, String]] = data.flatMap(json => (json \ "nino").asOpt[String]).map(nino => Map("nino" -> nino))
-    val maybeExtraDetail: Option[Map[String, String]] = maybeNewFormatExtraDetail.orElse(maybeOldFormatExtraDetail)
+    val response = data.flatMap(validate).map { validData =>
+      val defaultEvent = DataEvent(
+        "native-apps",
+        validData.auditType,
+        tags = hc.toAuditTags("explicitAuditEvent", validData.auditType),
+        detail = hc.toAuditDetails(validData.extraDetail.toSeq: _*)
+      )
 
-    val maybeEvent: Option[DataEvent] = (for {
-      auditType <- maybeAuditType
-      extraDetail <- maybeExtraDetail
-    } yield DataEvent(
-      "native-apps",
-      auditType,
-      tags = hc.toAuditTags("explicitAuditEvent", auditType),
-      detail = hc.toAuditDetails(extraDetail.toSeq: _*)
-    )).map{ event: DataEvent =>
-      val maybeGeneratedAt = readGeneratedAt(data, event.eventId)
-      maybeGeneratedAt
-        .map(generatedAt => event.copy(generatedAt = generatedAt))
-        .getOrElse(event)
-    }
+      val event: DataEvent = readGeneratedAt(data, defaultEvent.eventId)
+        .map(generatedAt => defaultEvent.copy(generatedAt = generatedAt))
+        .getOrElse(defaultEvent)
 
-    val response = maybeEvent.map { event =>
       audit.sendDataEvent(event)
       ExecutorResponse(executorName, failure = Some(false))
     }.getOrElse(
@@ -239,6 +232,18 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
     )
 
     Future.successful(Some(response))
+  }
+
+  private def validate(data: JsValue): Option[ValidData] = {
+    val maybeAuditType: Option[String] = (data \ "auditType").asOpt[String]
+    val maybeNewFormatExtraDetail: Option[Map[String, String]] = (data \ "detail").asOpt[Map[String, String]]
+    val maybeOldFormatExtraDetail: Option[Map[String, String]] = (data \ "nino").asOpt[String].map(nino => Map("nino" -> nino))
+    val maybeExtraDetail: Option[Map[String, String]] = maybeNewFormatExtraDetail.orElse(maybeOldFormatExtraDetail)
+
+    for {
+      auditType <- maybeAuditType
+      extraDetail <- maybeExtraDetail
+    } yield ValidData(auditType, extraDetail)
   }
 
   private def readGeneratedAt(data: Option[JsValue], eventId: String): Option[DateTime] = {
