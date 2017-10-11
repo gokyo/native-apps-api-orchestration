@@ -19,13 +19,14 @@ audit-event
 *  **Request body**
 
 New format. `data.detail` contains arbitrary String properties that are passed through unmodified as the `detail` of the Splunk event. 
-```json
+```javascript
 {
   "eventRequest": [
     {
       "name": "ngc-audit-event",
       "data": {
         "auditType": "TCSPayment",
+        "generatedAt": "2017-09-12T08:35:49.340Z", // optional, if not present then current date & time will be used
         "detail": {
           "nino": "some-nino",
           "ctcFrequency": "WEEKLY",
