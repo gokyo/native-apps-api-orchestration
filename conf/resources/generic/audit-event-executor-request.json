@@ -3,8 +3,9 @@
     {
       "name": "ngc-audit-event",
       "data": {
+        "nino": "CS700100A",
+        "generatedAt": "2017-09-12T08:35:49.340Z",
         "detail": {
-          "nino": "CS700100A",
           "ctcFrequency": "WEEKLY",
           "wtcFrequency": "NONE"
         },
