@@ -1,15 +1,12 @@
 package stubs
 
-import utils.WireMockSupport
 import com.github.tomakehurst.wiremock.client.WireMock._
 
-trait AuthStub {
-
-  self: WireMockSupport ⇒
+object AuthStub {
 
   private val oid: String = "$oid"
 
-  def requestIsAuthenticated(nino: String): AuthStub = {
+  def requestIsAuthenticated(nino: String): Unit = {
     stubFor(get(urlEqualTo("/auth/authority"))
       .willReturn(aResponse()
         .withStatus(200)
@@ -19,7 +16,7 @@ trait AuthStub {
              |  "uri": "/auth/oid/$oid",
              |  "confidenceLevel": 200,
              |  "credentialStrength": "strong",
-             |  "nino": $nino,
+             |  "nino": "$nino",
              |  "userDetailsLink": "http://localhost:9978/user-details/id/59db4a285800005800576244",
              |  "legacyOid": "$oid",
              |  "new-session": "/auth/oid/$oid/session",
@@ -62,7 +59,6 @@ trait AuthStub {
              |  "credId": "cred-id"
              |}
            """.stripMargin)))
-    this
   }
 
 }

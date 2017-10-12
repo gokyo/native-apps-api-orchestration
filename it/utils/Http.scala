@@ -68,6 +68,10 @@ class Resource(path: String, port: Int) {
   def postAsJson(body: String)(implicit hc: HeaderCarrier = HeaderCarrier()) =
     Http.post(url, body, Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON))(hc)
 
+  def postAsJsonWithHeader(body: String, headers : Seq[(String, String)])(implicit hc: HeaderCarrier = HeaderCarrier()) = {
+    Http.post(url, body, headers)(hc)
+  }
+
   def postEmpty()(implicit hc: HeaderCarrier = HeaderCarrier()) =
     Http.postEmpty(url)(hc)
 

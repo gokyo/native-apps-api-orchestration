@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
+import javax.inject.Singleton
+
 import play.api.http.HeaderNames
 import play.api.libs.json.{JsSuccess, JsValue, Json}
 import play.api.mvc._
@@ -293,8 +295,8 @@ trait ConfigLoad {
     .getOrElse(throw new Exception(s"Failed to resolve config key $pollMaxAge"))
 }
 
-
-object LiveOrchestrationController extends NativeAppsOrchestrationController with ConfigLoad {
+@Singleton
+class LiveOrchestrationController extends NativeAppsOrchestrationController with ConfigLoad {
   override val service = LiveOrchestrationService
   override val accessControl = AccountAccessControlWithHeaderCheck
   override val accessControlOff = AccountAccessControlCheckOff
@@ -305,10 +307,10 @@ object LiveOrchestrationController extends NativeAppsOrchestrationController wit
   override def getConfigForPollMaxAge = Play.current.configuration.getLong(pollMaxAge)
 }
 
-object SandboxOrchestrationController extends SandboxOrchestrationController {
-  override val auditConnector: AuditConnector = MicroserviceAuditConnector
-  override val maxAgeForSuccess: Long = 3600
-
+@Singleton
+class SandboxOrchestrationControllerImpl extends SandboxOrchestrationController {
+  val auditConnector: AuditConnector = MicroserviceAuditConnector
+  val maxAgeForSuccess: Long = 3600
 }
 
 trait SandboxOrchestrationController extends NativeAppsOrchestrationController with SandboxPoll {
