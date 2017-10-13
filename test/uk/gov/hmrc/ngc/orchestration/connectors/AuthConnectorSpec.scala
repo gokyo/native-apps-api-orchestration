@@ -38,7 +38,7 @@ class AuthConnectorSpec extends UnitSpec with ScalaFutures {
 
     override def uuid = "some_value"
 
-    override def http: HttpPost with HttpGet = new HttpPost with HttpGet with WSPost {
+    override def http: CorePost with CoreGet = new HttpPost with HttpGet with WSPost {
       override def doGet(url: String)(implicit hc: HeaderCarrier): Future[HttpResponse] = Future.successful(response)
 
       override val hooks: Seq[HttpHook] = Seq.empty

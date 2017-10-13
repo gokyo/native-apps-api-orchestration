@@ -22,7 +22,7 @@ import org.joda.time.DateTime
 import play.api.Play
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.domain.{Nino, SaUtr}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost}
+import uk.gov.hmrc.http._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, CredentialStrength}
 import uk.gov.hmrc.play.auth.microservice.connectors.ConfidenceLevel
@@ -59,7 +59,7 @@ trait AuthConnector {
 
   val serviceUrl: String
 
-  def http: HttpPost with HttpGet
+  def http: CorePost with CoreGet
 
   def serviceConfidenceLevel: ConfidenceLevel
 
