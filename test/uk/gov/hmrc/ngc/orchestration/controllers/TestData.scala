@@ -1167,7 +1167,24 @@ object TestData {
       |          "oneOffPayment": false
       |        }
       |      ],
-      |      "paymentFrequency": "weekly"
+      |      "paymentFrequency": "weekly",
+      |      "previousPaymentSeq": [
+      |        {
+      |          "amount": 33,
+      |          "paymentDate": previousDate1,
+      |          "oneOffPayment": false
+      |        },
+      |        {
+      |          "amount": 43.21,
+      |          "paymentDate": previousDate2,
+      |          "oneOffPayment": false
+      |        },
+      |        {
+      |          "amount": 53.21,
+      |          "paymentDate": previousDate3,
+      |          "oneOffPayment": false
+      |        }
+      |      ]
       |    },
       |    "childTaxCredit": {
       |      "paymentSeq": [
@@ -1212,7 +1229,24 @@ object TestData {
       |          "oneOffPayment": false
       |        }
       |      ],
-      |      "paymentFrequency": "weekly"
+      |      "paymentFrequency": "weekly",
+      |      "previousPaymentSeq": [
+      |        {
+      |          "amount": 12.12,
+      |          "paymentDate": previousDate1,
+      |          "oneOffPayment": false
+      |        },
+      |        {
+      |          "amount": 23.23,
+      |          "paymentDate": previousDate2,
+      |          "oneOffPayment": false
+      |        },
+      |        {
+      |          "amount": 34.34,
+      |          "paymentDate": previousDate3,
+      |          "oneOffPayment": false
+      |        }
+      |      ]
       |    },
       |    "paymentEnabled": true,
       |    "totalsByDate": [
@@ -1247,6 +1281,20 @@ object TestData {
       |      {
       |        "amount": 252.13,
       |        "paymentDate": date8
+      |      }
+      |    ],
+      |    "previousTotalsByDate": [
+      |      {
+      |        "amount": 45.12,
+      |        "paymentDate": previousDate1
+      |      },
+      |      {
+      |        "amount": 66.44,
+      |        "paymentDate": previousDate2
+      |      },
+      |      {
+      |        "amount": 87.55,
+      |        "paymentDate": previousDate3
       |      }
       |    ]
       |  },

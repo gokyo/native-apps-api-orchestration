@@ -102,6 +102,9 @@ trait SandboxPoll extends FileResource with ConfiguredCampaigns {
     val taxSummary = Result("taxSummary", Json.parse(resource.get))
 
     val taxCreditSummary = Json.parse(findResource(s"/resources/taxcreditsummary/${nino.value}.json").get
+      .replaceAll("previousDate1", currentTime.minusWeeks(2).getMillis.toString)
+      .replaceAll("previousDate2", currentTime.minusWeeks(1).getMillis.toString)
+      .replaceAll("previousDate3", currentTime.getMillis.toString)
       .replaceAll("date1", currentTime.plusWeeks(1).getMillis.toString)
       .replaceAll("date2", currentTime.plusWeeks(2).getMillis.toString)
       .replaceAll("date3", currentTime.plusWeeks(3).getMillis.toString)
@@ -109,7 +112,8 @@ trait SandboxPoll extends FileResource with ConfiguredCampaigns {
       .replaceAll("date5", currentTime.plusWeeks(5).getMillis.toString)
       .replaceAll("date6", currentTime.plusWeeks(6).getMillis.toString)
       .replaceAll("date7", currentTime.plusWeeks(7).getMillis.toString)
-      .replaceAll("date8", currentTime.plusWeeks(8).getMillis.toString))
+      .replaceAll("date8", currentTime.plusWeeks(8).getMillis.toString)
+    )
 
     val taxCreditSummaryResult = Result("taxCreditSummary", taxCreditSummary)
 
