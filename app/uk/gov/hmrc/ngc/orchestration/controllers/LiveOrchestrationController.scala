@@ -126,29 +126,11 @@ trait GenericServiceCheck {
 
 }
 
-trait Shuttering {
-
-  self: NativeAppsOrchestrationController ⇒
-
-  def isShuttered = Play.current.configuration.getBoolean("shuttering.enabled").getOrElse(false)
-  def message = Play.current.configuration.getString("shuttering.message").getOrElse("")
-
-  def shutteringCheck(endpoint: String)(func: ⇒ Future[mvc.Result]): Future[Result] = {
-    if(isShuttered) {
-      val response = ShutteredResponse(message)
-      Logger.info(s"$app $endpoint shuttered - returning ${response.httpStatusCode}")
-      Future.successful(Status(response.httpStatusCode)(Json.toJson(response)))
-    }
-    else
-      func
-  }
-}
-
 trait SecurityCheck {
   def checkSecurity:Boolean
 }
 
-trait NativeAppsOrchestrationController extends AsyncController with SecurityCheck with Auditor with GenericServiceCheck with Shuttering {
+trait NativeAppsOrchestrationController extends AsyncController with SecurityCheck with Auditor with GenericServiceCheck {
   val service: OrchestrationService
   val accessControl: AccountAccessControlWithHeaderCheck
   val accessControlOff: AccountAccessControlWithHeaderCheck
@@ -157,21 +139,19 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
   def preFlightCheck(journeyId:Option[String]): Action[JsValue] = accessControlOff.validateAcceptWithAuth(acceptHeaderValidationRules, None).async(BodyParsers.parse.json) {
     implicit request =>
       errorWrapper {
-        shutteringCheck("preFlightCheck") {
-          implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
-          implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
-          Json.toJson(request.body).asOpt[PreFlightRequest].
-            fold(Future.successful(BadRequest("Failed to parse request!"))) { preFlightRequest =>
+        implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
+        implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
+        Json.toJson(request.body).asOpt[PreFlightRequest].
+          fold(Future.successful(BadRequest("Failed to parse request!"))) { preFlightRequest =>
 
-              hc.authorization match {
-                case Some(auth) => service.preFlightCheck(preFlightRequest, journeyId).map(
-                  response => Ok(Json.toJson(response)).withSession(authToken -> auth.value)
-                )
+            hc.authorization match {
+              case Some(auth) => service.preFlightCheck(preFlightRequest, journeyId).map(
+                response => Ok(Json.toJson(response)).withSession(authToken -> auth.value)
+              )
 
-                case _ => Future.failed(new Exception("Failed to resolve authentication from HC!"))
-              }
+              case _ => Future.failed(new Exception("Failed to resolve authentication from HC!"))
             }
-        }
+          }
       }
   }
 
@@ -181,22 +161,20 @@ trait NativeAppsOrchestrationController extends AsyncController with SecurityChe
       implicit val req = authenticated.request
       implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
       errorWrapper {
-        shutteringCheck("orchestrate") {
-          validate { validatedRequest =>
-            // Do not allow more than one task to be executing - if task is running then poll status will be returned.
-            asyncActionWrapper.async(callbackWithStatus) {
-              flag =>
+        validate { validatedRequest =>
+          // Do not allow more than one task to be executing - if task is running then poll status will be returned.
+          asyncActionWrapper.async(callbackWithStatus) {
+            flag =>
 
-                // Async function wrapper responsible for executing below code onto a background queue.
-                asyncWrapper(callbackWithStatus) {
-                  headerCarrier =>
-                    Logger.info(s"Background HC: ${hc.authorization.fold("not found")(_.value)} for Journey Id $journeyId")
+              // Async function wrapper responsible for executing below code onto a background queue.
+              asyncWrapper(callbackWithStatus) {
+                headerCarrier =>
+                  Logger.info(s"Background HC: ${hc.authorization.fold("not found")(_.value)} for Journey Id $journeyId")
 
-                    service.orchestrate(validatedRequest, nino, journeyId).map { response =>
-                      AsyncResponse(response ++ buildResponseCode(ResponseStatus.complete), nino)
-                    }
-                }
-            }
+                  service.orchestrate(validatedRequest, nino, journeyId).map { response =>
+                    AsyncResponse(response ++ buildResponseCode(ResponseStatus.complete), nino)
+                  }
+              }
           }
         }
       }

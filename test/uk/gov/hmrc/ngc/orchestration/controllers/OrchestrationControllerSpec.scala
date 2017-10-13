@@ -96,12 +96,6 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       status(result) shouldBe 401
     }
 
-    "return 503 http status code with a custom message when shuttering has been enabled" in new ShutteredSuccess {
-      val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
-      status(result) shouldBe 503
-      contentAsJson(result) shouldBe Json.parse("""{"code":"SCHEDULED_MAINTENANCE","message":"This is a shuttering test"}""")
-    }
-
   }
 
   "preFlightCheck live controller with MFA start request" should {
@@ -228,19 +222,6 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       status(result) shouldBe 500
     }
 
-  }
-
-  "Startup service call" should {
-    "return 503 http status code with a custom message when shuttering has been enabled" in new ShutteredSuccess {
-      val authToken = "AuthToken" -> "Bearer 123456"
-      val authHeader = "Authorization" -> "Bearer 123456"
-      val requestWithSessionKeyAndIdNoBody = FakeRequest().withSession(
-        controller.AsyncMVCSessionId -> controller.buildSession(controller.id, "test-session-id-shuttering"),
-        authToken).withHeaders("Accept" -> "application/vnd.hmrc.1.0+json",authHeader)
-      val result = await(controller.orchestrate(nino, Some("random-journey-id")).apply(requestWithSessionKeyAndIdNoBody))
-      status(result) shouldBe 503
-      contentAsJson(result) shouldBe Json.parse("""{"code":"SCHEDULED_MAINTENANCE","message":"This is a shuttering test"}""")
-    }
   }
 
   "async live controller (verify different json attribute response values based on service responses)" should {
