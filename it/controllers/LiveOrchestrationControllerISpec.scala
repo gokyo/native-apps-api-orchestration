@@ -20,12 +20,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
   private val journeyId = "f7a5d556-9f34-47cb-9d84-7e904f2fe704"
   private val currentYear = TaxYear.current.currentYear toString
 
-  //Update with the latest startup cookie produced, in order to be able to poll for your response.
-  private var headerWithCookie: Seq[(String, String)] = Seq.empty
-
-
   def withJourneyParam(journeyId: String) = s"?journeyId=$journeyId"
-  def removeCookie = headerWithCookie = Seq.empty
   def withCookieHeader(response: HttpResponse) = {
     Seq(HeaderNames.COOKIE → response.allHeaders.get("Set-Cookie").getOrElse(throw new Exception("NO COOKIE FOUND")).head)
   }
@@ -53,8 +48,9 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
     }
   }
 
-  "POST of /native-app/:nino/startup" should {
-    "return a http 200 status with a body status code 'poll' for an authenticated user (startup - 1)" in {
+  "POST of /native-app/:nino/startup with GET of /native-app/:nino/poll" should {
+    "return a http 200 status with a body status code 'poll' for an authenticated user, " +
+      "with poll asynchronously returning the orchestrated response of the startup call" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       requestIsAuthenticated(nino)
@@ -76,16 +72,8 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.status shouldBe 200
       response.body shouldBe """{"status":{"code":"poll"}}"""
       response.allHeaders.get("Set-Cookie").get.head shouldNot(be(empty))
-      headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
-    }
-  }
+      val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
-  //NOTE the "POST of /native-app/:nino/startup" need to be run for these to succeed.
-  "GET of /native-app/:nino/poll" should {
-    "return the response for startup call (startup - 1)" in {
-      val nino = "CS700100A"
-      writeAuditSucceeds()
-      requestIsAuthenticated(nino)
       val pollResponse = eventually {
         await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
       }
@@ -95,7 +83,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (pollResponse.json \\ "state") shouldNot (be(None))
       (pollResponse.json \\ "campaigns") shouldNot (be(None))
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
-      removeCookie
     }
   }
 }
