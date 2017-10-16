@@ -761,6 +761,9 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val result = await(controller.poll(nino)(requestWithAuthSession))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe Json.parse(TestData.sandboxPollResponse
+        .replaceAll("previousDate1", currentTime.minusWeeks(2).getMillis.toString)
+        .replaceAll("previousDate2", currentTime.minusWeeks(1).getMillis.toString)
+        .replaceAll("previousDate3", currentTime.getMillis.toString)
         .replaceAll("date1", currentTime.plusWeeks(1).getMillis.toString)
         .replaceAll("date2", currentTime.plusWeeks(2).getMillis.toString)
         .replaceAll("date3", currentTime.plusWeeks(3).getMillis.toString)
