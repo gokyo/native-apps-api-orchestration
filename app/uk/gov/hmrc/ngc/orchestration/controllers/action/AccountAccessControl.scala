@@ -21,8 +21,8 @@ import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import uk.gov.hmrc.api.controllers._
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.{Request => _, _}
 import uk.gov.hmrc.http.hooks.HttpHook
-import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
 import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.controllers.ErrorUnauthorizedNoNino
 import uk.gov.hmrc.play.HeaderCarrierConverter
@@ -110,7 +110,7 @@ object AccountAccessControlOff extends AccountAccessControl {
 
     override def serviceConfidenceLevel: ConfidenceLevel = ConfidenceLevel.L0
 
-    override def http: HttpPost with HttpGet = new HttpPost with HttpGet {
+    override def http: CorePost with CoreGet = new HttpPost with HttpGet {
       private def failedNoHttp = Future.failed(noHttp)
       private def noHttp: RuntimeException =
         new UnsupportedOperationException("Access control check is off - no HTTP requests should be being made by this AuthConnector")

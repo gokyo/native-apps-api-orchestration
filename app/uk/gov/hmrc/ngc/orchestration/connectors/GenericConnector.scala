@@ -18,15 +18,15 @@ package uk.gov.hmrc.ngc.orchestration.connectors
 
 import play.api.Logger
 import play.api.libs.json._
+import uk.gov.hmrc.http._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 
 import scala.concurrent.{ExecutionContext, Future}
-import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
 
 
 trait GenericConnector {
 
-  def http: HttpPost with HttpGet
+  def http: CorePost with CoreGet
 
   private def addAPIHeaders(hc:HeaderCarrier) = hc.withExtraHeaders("Accept" -> "application/vnd.hmrc.1.0+json")
 

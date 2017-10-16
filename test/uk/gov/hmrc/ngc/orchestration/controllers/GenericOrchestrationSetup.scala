@@ -19,7 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 import play.api.libs.json.{JsValue, Json}
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier, HttpGet, HttpPost}
+import uk.gov.hmrc.http._
 import uk.gov.hmrc.mongo.{DatabaseUpdate, Updated}
 import uk.gov.hmrc.msasync.repository.{AsyncRepository, TaskCachePersist}
 import uk.gov.hmrc.ngc.orchestration.config.{MicroserviceAuditConnector, WSHttp}
@@ -169,7 +169,7 @@ class TestExecutorFactory(override val serviceExecutors: Map[String, ServiceExec
 case class GenericServiceResponse(failure:Boolean, data: JsValue)
 
 class TestGenericOrchestrationConnector(response:Seq[GenericServiceResponse], exception: Option[String] = None) extends GenericConnector {
-  override def http: HttpPost with HttpGet = WSHttp
+  override def http: CorePost with CoreGet = WSHttp
   var pos=0
 
   override def doPost(json: JsValue, host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = respond()
@@ -200,7 +200,7 @@ class TestAuditConnector extends AuditConnector {
 class TestServiceGenericConnector(pathFailMap: Map[String, Boolean], response: JsValue, httpResponseCode:Option[Int]=None, exception:Option[Exception]=None) extends GenericConnector {
   var count = 0
 
-  override def http: HttpPost with HttpGet = WSHttp
+  override def http: CorePost with CoreGet = WSHttp
 
   override def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     path match {

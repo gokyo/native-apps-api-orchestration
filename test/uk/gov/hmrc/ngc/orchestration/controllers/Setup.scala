@@ -24,7 +24,7 @@ import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost}
+import uk.gov.hmrc.http._
 import uk.gov.hmrc.mongo.{DatabaseUpdate, Updated}
 import uk.gov.hmrc.msasync.repository.{AsyncRepository, TaskCachePersist}
 import uk.gov.hmrc.ngc.orchestration.config.{MicroserviceAuditConnector, WSHttp}
@@ -468,7 +468,7 @@ class TestAuthConnector(nino: Option[Nino], routeTwoFactor:Boolean=false, genera
 
   override def serviceConfidenceLevel: ConfidenceLevel = {println(" A..."); throw new Exception("Must not be invoked")}
 
-  override def http: HttpPost with HttpGet = {println(" B..."); throw new Exception("Must not be invoked")}
+  override def http: CorePost with CoreGet = {println(" B..."); throw new Exception("Must not be invoked")}
 
   override def accounts(journeyId:Option[String])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Accounts] = {
     println(" routeTwoFactor is " + routeTwoFactor)
@@ -502,7 +502,7 @@ class TestServiceFailureGenericConnector(pathFailMap: Map[String, Boolean], upgr
 
   var countPushRegistration = 0
 
-  override def http: HttpPost with HttpGet = WSHttp
+  override def http: CorePost with CoreGet = WSHttp
 
   override def doPost(json: JsValue, host: String, path: String, port: Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] =  {
     val versionCheck = "/profile/native-app/version-check"
