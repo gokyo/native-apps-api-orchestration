@@ -6,7 +6,7 @@ object AuthStub {
 
   private val oid: String = "$oid"
 
-  def requestIsAuthenticated(nino: String): Unit = {
+  def requestIsAuthenticated(nino: String, confidenceLevel: Int = 200, credentialStrength: String = "strong"): Unit = {
     stubFor(get(urlEqualTo("/auth/authority"))
       .willReturn(aResponse()
         .withStatus(200)
@@ -14,8 +14,8 @@ object AuthStub {
           s"""
              |{
              |  "uri": "/auth/oid/$oid",
-             |  "confidenceLevel": 200,
-             |  "credentialStrength": "strong",
+             |  "confidenceLevel": $confidenceLevel,
+             |  "credentialStrength": "$credentialStrength",
              |  "nino": "$nino",
              |  "userDetailsLink": "http://localhost:9978/user-details/id/59db4a285800005800576244",
              |  "legacyOid": "$oid",

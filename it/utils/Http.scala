@@ -29,8 +29,8 @@ import scala.concurrent.{Await, Future}
 
 object Http {
 
-  def get(url: String)(implicit hc: HeaderCarrier): HttpResponse = perform(url) { request =>
-    request.get()
+  def get(url: String, headers: Seq[(String, String)] = Seq.empty)(implicit hc: HeaderCarrier): HttpResponse = perform(url) { request =>
+    request.withHeaders(headers: _*).get()
   }
 
   def post(url: String, body: String, headers: Seq[(String, String)] = Seq.empty)
@@ -64,6 +64,8 @@ class Resource(path: String, port: Int) {
   private def url() = s"http://localhost:$port$path"
 
   def get()(implicit hc: HeaderCarrier = HeaderCarrier()) = Http.get(url)(hc)
+
+  def getWithHeaders(headers: Seq[(String, String)])(implicit hc: HeaderCarrier = HeaderCarrier()) = Http.get(url, headers)(hc)
 
   def postAsJson(body: String)(implicit hc: HeaderCarrier = HeaderCarrier()) =
     Http.post(url, body, Seq(HeaderNames.CONTENT_TYPE -> MimeTypes.JSON))(hc)

@@ -19,6 +19,10 @@ trait BaseISpec extends UnitSpec with OneServerPerSuite with WireMockSupport {
         "microservice.services.service-locator.port"    → wireMockPort,
         "microservice.services.customer-profile.host"   → wireMockHost,
         "microservice.services.customer-profile.port"   → wireMockPort,
+        "microservice.services.personal-income.host"    → wireMockHost,
+        "microservice.services.personal-income.port"    → wireMockPort,
+        "microservice.services.push-registration.host"  → wireMockHost,
+        "microservice.services.push-registration.port"  → wireMockPort,
         "auditing.consumer.baseUri.host"                → wireMockHost,
         "auditing.consumer.baseUri.port"                → wireMockPort
       )
