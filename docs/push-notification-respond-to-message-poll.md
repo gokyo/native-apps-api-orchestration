@@ -1,6 +1,6 @@
-poll push-notification-get-message
+poll push-notification-respond-to-message
 ----
-  Request to get a push notification message from the push-notification service. A call to Startup must have been performed first before the poll service is invoked. The orchestrate service will return a cookie called mdtpapi and this cookie must be supplied to the poll service. This service should be invoked every 2-3 seconds to verify the outcome of the Startup service call which created the async task.
+  Request to respond to a push notification message from the push-notification service. A call to Startup must have been performed first before the poll service is invoked. The orchestrate service will return a cookie called mdtpapi and this cookie must be supplied to the poll service. This service should be invoked every 2-3 seconds to verify the outcome of the Startup service call which created the async task.
   
 * **URL**
 
@@ -29,17 +29,8 @@ On success the below JSON will be returned.
   "OrchestrationResponse": {
     "serviceResponse": [
       {
-        "name": "push-notification-get-message",
-        "responseData": {
-            "id":"c59e6746-9cd8-454f-a4fd-c5dc42db7d99",
-            "subject": "Weather",
-            "body": "Is it raining?",
-            "responses": {
-              "yes": "Yes",
-              "no": "No"
-            }
-        },
-        "failure":false
+        "name": "push-notification-respond-to-message",
+        "failure": false
       }
     ]
   },
@@ -56,7 +47,7 @@ When a failure occurs executing `push-notification-get-message`, the below respo
   "OrchestrationResponse": {
     "serviceResponse": [
       {
-        "name": "push-notification-get-message",
+        "name": "push-notification-respond-to-message",
         "failure": true
       }
     ]
