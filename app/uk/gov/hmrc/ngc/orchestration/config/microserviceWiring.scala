@@ -16,16 +16,19 @@
 
 package uk.gov.hmrc.ngc.orchestration.config
 
+import uk.gov.hmrc.auth.core.PlayAuthConnector
 import uk.gov.hmrc.http.{HttpGet, HttpPost}
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.auth.microservice.connectors.AuthConnector
 import uk.gov.hmrc.play.config.{RunMode, ServicesConfig}
-import uk.gov.hmrc.play.http.ws._
+import uk.gov.hmrc.play.http.ws.{WSGet, WSPost}
 import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
+
 
 trait WSHttp extends HttpGet with HttpPost with WSGet with WSPost with RunMode {
   override val hooks = NoneRequired
 }
+
 object WSHttp extends WSHttp
 
 object MicroserviceAuditConnector extends AuditConnector with RunMode {
@@ -35,3 +38,7 @@ object MicroserviceAuditConnector extends AuditConnector with RunMode {
 object MicroserviceAuthConnector extends AuthConnector with ServicesConfig with WSHttp {
   override val authBaseUrl = baseUrl("auth")
 }
+
+class ConcreteAuthConnector(val serviceUrl: String, val http: HttpPost) extends PlayAuthConnector
+
+
