@@ -1170,19 +1170,19 @@ object TestData {
       |      "paymentFrequency": "weekly",
       |      "previousPaymentSeq": [
       |        {
-      |          "amount": 33,
+      |          "amount": 100,
       |          "paymentDate": previousDate1,
       |          "oneOffPayment": false
       |        },
       |        {
-      |          "amount": 43.21,
+      |          "amount": 100,
       |          "paymentDate": previousDate2,
       |          "oneOffPayment": false
       |        },
       |        {
-      |          "amount": 53.21,
+      |          "amount": 170.31,
       |          "paymentDate": previousDate3,
-      |          "oneOffPayment": false
+      |          "oneOffPayment": true
       |        }
       |      ]
       |    },
@@ -1232,19 +1232,19 @@ object TestData {
       |      "paymentFrequency": "weekly",
       |      "previousPaymentSeq": [
       |        {
-      |          "amount": 12.12,
+      |          "amount": 140.70,
       |          "paymentDate": previousDate1,
       |          "oneOffPayment": false
       |        },
       |        {
-      |          "amount": 23.23,
+      |          "amount": 140.70,
       |          "paymentDate": previousDate2,
       |          "oneOffPayment": false
       |        },
       |        {
-      |          "amount": 34.34,
+      |          "amount": 100,
       |          "paymentDate": previousDate3,
-      |          "oneOffPayment": false
+      |          "oneOffPayment": true
       |        }
       |      ]
       |    },
@@ -1285,15 +1285,15 @@ object TestData {
       |    ],
       |    "previousTotalsByDate": [
       |      {
-      |        "amount": 45.12,
+      |        "amount": 240.70,
       |        "paymentDate": previousDate1
       |      },
       |      {
-      |        "amount": 66.44,
+      |        "amount": 240.70,
       |        "paymentDate": previousDate2
       |      },
       |      {
-      |        "amount": 87.55,
+      |        "amount": 270.31,
       |        "paymentDate": previousDate3
       |      }
       |    ]
