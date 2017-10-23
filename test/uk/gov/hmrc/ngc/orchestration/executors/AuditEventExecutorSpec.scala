@@ -22,7 +22,7 @@ import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito.{never, verify, when}
 import org.scalatest.matchers.{MatchResult, Matcher}
 import org.scalatest.mockito.MockitoSugar
-import org.scalatest.{Assertion, AsyncWordSpec, Matchers, OptionValues}
+import org.scalatest.{AsyncWordSpec, Matchers, OptionValues}
 import org.slf4j.Logger
 import play.api.LoggerLike
 import play.api.libs.json.Json

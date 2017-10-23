@@ -16,17 +16,18 @@
 
 package uk.gov.hmrc.ngc.orchestration.connectors
 
+import com.google.inject.Singleton
 import play.api.Logger
-import play.api.libs.json._
-import uk.gov.hmrc.http._
+import play.api.libs.json.JsValue
+import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@Singleton
+class GenericConnector {
 
-trait GenericConnector {
-
-  def http: CorePost with CoreGet
+  def http: HttpPost with HttpGet = WSHttp
 
   private def addAPIHeaders(hc:HeaderCarrier) = hc.withExtraHeaders("Accept" -> "application/vnd.hmrc.1.0+json")
 
@@ -51,9 +52,4 @@ trait GenericConnector {
     implicit val hcHeaders = addAPIHeaders(hc)
     http.GET(buildUrl(host, port, path))
   }
-
-}
-
-object GenericConnector extends GenericConnector {
-  override def http = WSHttp
 }

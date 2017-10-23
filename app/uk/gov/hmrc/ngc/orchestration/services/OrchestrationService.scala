@@ -18,46 +18,29 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
+import com.google.inject.{Inject, Singleton}
+import com.google.inject.name.Named
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.json._
-import play.api.{Configuration, Logger, Play}
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.api.service.Auditor
+import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.ngc.orchestration.config.{Campaign, ConfiguredCampaigns, MicroserviceAuditConnector}
-import uk.gov.hmrc.ngc.orchestration.connectors.{AuthConnector, GenericConnector}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.ngc.orchestration.config.ConfiguredCampaigns
+import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
+import uk.gov.hmrc.ngc.orchestration.services.live.{MFAAPIResponse, MFAIntegration, MFARequest}
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.time.TaxYear
 
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future._
 import scala.concurrent.{ExecutionContext, Future}
-import uk.gov.hmrc.http.HeaderCarrier
-
 
 case class OrchestrationServiceRequest(requestLegacy: Option[JsValue], request: Option[OrchestrationRequest])
-
-trait OrchestrationService extends ExecutorFactory {
-
-  def genericConnector: GenericConnector = GenericConnector
-
-  def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse]
-
-  def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject]
-
-  def orchestrate(request: OrchestrationServiceRequest, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject]
-
-  private def getServiceConfig(serviceName: String): Configuration = {
-    Play.current.configuration.getConfig(s"microservice.services.$serviceName").getOrElse(throw new Exception)
-  }
-
-  protected def getStringSeq(name:String) = Play.current.configuration.getStringSeq(name)
-
-  protected def getConfigProperty(serviceName: String, property: String): String = {
-    getServiceConfig(serviceName).getString(property).getOrElse(throw new Exception(s"No service configuration found for $serviceName"))
-  }
-}
 
 case class DeviceVersion(os : String, version : String)
 
@@ -85,42 +68,32 @@ object JourneyResponse {
 
 case class ServiceState(state:String, func: Accounts => MFARequest => Option[String] => Future[MFAAPIResponse])
 
-trait LiveOrchestrationService extends OrchestrationService with Auditor with MFAIntegration with ConfiguredCampaigns {
 
-  val authConnector: AuthConnector
+trait OrchestrationService {
 
-  def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = {
+  def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = ???
+
+  def startup(inputRequest:JsValue, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = ???
+
+  def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = ???
+}
+
+@Singleton
+class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
+                                         genericConnector: GenericConnector,
+                                         override val auditConnector: AuditConnector,
+                                         override val authConnector: AuthConnector,
+                                         @Named("customer-profile.host") cpHost: String,
+                                         @Named("customer-profile.port") cpPort: Int,
+                                         @Named("confidenceLevel") override val confLevel: Int)
+  extends OrchestrationService with Authorisation with ExecutorFactory with Auditor with ConfiguredCampaigns {
+
+  override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = {
     withAudit("preFlightCheck", Map.empty) {
-
-      def mfaDecision(accounts:Accounts) : Future[Option[MFAAPIResponse]] = {
-        def mfaNotRequired = Future.successful(Option.empty[MFAAPIResponse])
-
-        if (!accounts.routeToTwoFactor) mfaNotRequired
-        else preflightRequest.mfa.fold(mfaNotRequired) { mfa =>
-          verifyMFAStatus(mfa, accounts, journeyId).map(item => Some(item))
-        }
-      }
-
-      def getVersion = {
-        def buildJourney = journeyId.fold(""){id => s"?journeyId=$id"}
-        val device = DeviceVersion(preflightRequest.os, preflightRequest.version)
-
-        genericConnector.doPost(Json.toJson(device), getConfigProperty("customer-profile","host"), s"/profile/native-app/version-check$buildJourney", getConfigProperty("customer-profile","port").toInt, hc)
-          .map(response => (response \ "upgrade").as[Boolean]).recover {
-          // Default to false - i.e. no upgrade required.
-          case exception:Exception =>
-            Logger.error(s"Native Error - failure with processing version check. Exception is $exception")
-            false
-        }
-      }
-
-      val accountsF = authConnector.accounts(journeyId)
-      val versionUpdateF: Future[Boolean] = getVersion
-
       for {
-        accounts <- accountsF
-        mfaOutcome <- mfaDecision(accounts)
-        versionUpdate <- versionUpdateF
+        accounts <- getAccounts(journeyId)
+        mfaOutcome <- mfaDecision(accounts, request.mfa, journeyId)
+        versionUpdate <- getVersion(journeyId, request.os, request.version)
       } yield {
         val mfaURI: Option[MfaURI] = mfaOutcome.fold(Option.empty[MfaURI]){ _.mfa}
         // If authority has been updated then override the original accounts response from auth.
@@ -131,23 +104,22 @@ trait LiveOrchestrationService extends OrchestrationService with Auditor with MF
             accounts.copy(routeToTwoFactor = found.routeToTwoFactor)
           }
         }
-
         PreFlightCheckResponse(versionUpdate, returnAccounts, mfaURI)
       }
     }
   }
 
-  def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
-
+  override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
+    grantAccess(nino)
     request match {
-      case OrchestrationServiceRequest(None, Some(request)) =>
-        buildAndExecute(request, nino.value, journeyId).map(obj => Json.obj("OrchestrationResponse" -> obj))
-      case OrchestrationServiceRequest(Some(legacyRequest), None) =>
+      case OrchestrationServiceRequest(None, Some(request)) ⇒
+        buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
+      case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
         startup(legacyRequest, nino, journeyId)
     }
   }
 
-  def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject]= {
+  override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject]= {
     withAudit("startup", Map("nino" -> nino.value)) {
       val year = TaxYear.current.currentYear
 
@@ -162,7 +134,7 @@ trait LiveOrchestrationService extends OrchestrationService with Auditor with MF
   private def buildResponse(inputRequest:JsValue, nino: String, year: Int, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext) : Future[Seq[JsObject]] = {
     val futuresSeq: Seq[Future[Option[Result]]] = Seq(
       TaxSummary(genericConnector, journeyId),
-      TaxCreditSummary(authConnector, genericConnector, journeyId),
+      TaxCreditSummary(genericConnector, journeyId),
       TaxCreditsSubmissionState(genericConnector, journeyId),
       PushRegistration(genericConnector, inputRequest, journeyId)
     ).map(item => item.execute(nino, year))
@@ -173,10 +145,35 @@ trait LiveOrchestrationService extends OrchestrationService with Auditor with MF
       response ++ (if(!campaigns.isEmpty) Seq(Json.obj("campaigns" -> Json.toJson(campaigns))) else Seq.empty)
     }
   }
+
+
+  private def mfaDecision(accounts:Accounts, mfa: Option[MFARequest], journeyId: Option[String])(implicit hc: HeaderCarrier) : Future[Option[MFAAPIResponse]] = {
+    def mfaNotRequired = Future.successful(Option.empty[MFAAPIResponse])
+    if (!accounts.routeToTwoFactor)
+      mfaNotRequired
+    else mfa.fold(mfaNotRequired) { mfa ⇒
+      mfaIntegration.verifyMFAStatus(mfa, accounts, journeyId).map(item ⇒ Some(item))
+    }
+  }
+
+  private def getVersion(journeyId: Option[String], os: String, version: String)(implicit hc: HeaderCarrier) = {
+    def buildJourney = journeyId.fold("")(id ⇒ s"?journeyId=$id")
+    val device = DeviceVersion(os, version)
+    val path = s"/profile/native-app/version-check$buildJourney"
+    genericConnector.doPost(Json.toJson(device), cpHost, path, cpPort, hc).map {
+      resp ⇒ (resp \ "upgrade").as[Boolean]
+    }.recover{
+      // Default to false - i.e. no upgrade required.
+      case exception:Exception =>
+        Logger.error(s"Native Error - failure with processing version check. Exception is $exception")
+        false
+    }
+  }
+
 }
 
-
-object SandboxOrchestrationService extends OrchestrationService with FileResource {
+@Singleton
+class SandboxOrchestrationService extends OrchestrationService with FileResource with ExecutorFactory {
 
   val cache: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
 
@@ -193,14 +190,14 @@ object SandboxOrchestrationService extends OrchestrationService with FileResourc
                                 "404893573716" -> "CS700108A",
                                 "404893573717" -> "CS700109A")
 
-  def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = {
+  override def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = {
     successful(hc.extraHeaders.find(_._1 equals "X-MOBILE-USER-ID") match {
       case  Some((_, value))  => buildPreFlightResponse(value)
       case _ => buildPreFlightResponse(defaultUser)
     })
   }
 
-  def startup(jsValue:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
+  override def startup(jsValue:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
     successful(Json.obj("status" -> Json.obj("code" -> "poll")))
   }
 
@@ -237,14 +234,4 @@ object SandboxOrchestrationService extends OrchestrationService with FileResourc
     val nino = Nino(ninoMapping.getOrElse(userId, defaultNino))
     PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(nino), None, routeToIV = false, routeToTwoFactor = false, UUID.randomUUID().toString, "credId-1234", "Individual"))
   }
-
-  override val maxServiceCalls: Int = 10
-  override val maxEventCalls: Int = 10
-}
-
-object LiveOrchestrationService extends LiveOrchestrationService {
-  override val auditConnector: AuditConnector = MicroserviceAuditConnector
-  override val authConnector:AuthConnector = AuthConnector
-  override val maxServiceCalls: Int = Play.current.configuration.getInt("supported.generic.service.maxNumberServices.count").getOrElse(5)
-  override val maxEventCalls: Int = Play.current.configuration.getInt("supported.generic.service.maxNumberEvents.count").getOrElse(5)
 }

@@ -14,24 +14,41 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.ngc.orchestration.services
+package uk.gov.hmrc.ngc.orchestration.services.live
 
-import play.api.Logger
+import com.google.inject.name.Named
+import com.google.inject.{Inject, Singleton}
+import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import uk.gov.hmrc.ngc.orchestration.connectors.AuthExchangeResponse
-import uk.gov.hmrc.ngc.orchestration.controllers.BadRequestException
-import uk.gov.hmrc.ngc.orchestration.domain.{MfaURI, Accounts}
-
-import scala.concurrent.Future
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Try,Success,Failure}
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
+import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
+import uk.gov.hmrc.ngc.orchestration.controllers.BadRequestException
+import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, MfaURI}
+
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
+import scala.util.{Failure, Success, Try}
 
 case class MFAAPIResponse(routeToTwoFactor:Boolean, mfa:Option[MfaURI], authUpdated:Boolean)
 
 case class MFARequest(operation:String, apiURI:Option[String])
+
+case class ServiceState(state:String, func: Accounts => MFARequest => Option[String] => Future[MFAAPIResponse])
+
+case class JourneyRequest(userIdentifier: String, continueUrl: String, origin: String, affinityGroup: String, context: String, serviceUrl: Option[String], scopes: Seq[String]) //registrationSkippable: Boolean)
+
+object JourneyRequest {
+  implicit val format = Json.format[JourneyRequest]
+}
+
+case class JourneyResponse(journeyId: String, userIdentifier: String, registrationId: Option[String], continueUrl: String, origin: String, affinityGroup: String, registrationSkippable: Boolean, factor: Option[String], factorUri: Option[String], status: String, createdAt: DateTime)
+
+object JourneyResponse {
+  implicit val format = Json.format[JourneyResponse]
+}
 
 object MFARequest {
   final val   START = "start"
@@ -55,9 +72,31 @@ object MFARequest {
   implicit val formats = Format(MFARequest.reads, MFARequest.writes)
 }
 
-trait MFAIntegration extends OrchestrationService {
-  self:LiveOrchestrationService =>
+case class BearerToken(authToken: String, expiry: DateTime) {
+  override val toString = authToken
+}
 
+object BearerToken {
+  implicit val formats = Json.format[BearerToken]
+}
+
+object AuthExchangeResponse {
+  implicit val formats = Json.format[AuthExchangeResponse]
+}
+
+case class AuthExchangeResponse(access_token: BearerToken,
+                                expires_in: Long,
+                                refresh_token: Option[String] = None,
+                                token_type: String = "Bearer",
+                                authority_uri: Option[String] = None)
+
+@Singleton
+class MFAIntegration @Inject()(genericConnector: GenericConnector,
+                               @Named("mfa.host") host: String,
+                               @Named("mfa.port") port: Int,
+                               @Named("config") config: Configuration) {
+
+  val scopes = config.getStringSeq("scopes").get
   final val VALIDATE_URL = "/validateMFAoutcome"  // The URL returned from MFA web journeys which indicates the trigger to end wen journey and validate outcome.
   final val NGC_APPLICATION = "NGC"
 
@@ -81,56 +120,53 @@ trait MFAIntegration extends OrchestrationService {
 
   def mfaStart(accounts:Accounts, journeyId:Option[String])(implicit hc:HeaderCarrier) = {
 
-    val scopes = getStringSeq("scopes").getOrElse(throw new IllegalArgumentException("Failed to resolve scopes!"))
     val journeyRequest = JourneyRequest(accounts.credId, VALIDATE_URL, NGC_APPLICATION, accounts.affinityGroup, "api",
       Some(VALIDATE_URL), scopes)
 
-    genericConnector.doPost(Json.toJson(journeyRequest), getHost, "/multi-factor-authentication/authenticatedJourney",
-      getPort, hc)
+    genericConnector.doPost(Json.toJson(journeyRequest), host, "/multi-factor-authentication/authenticatedJourney",
+      port, hc)
       .map { response =>
-      val mfaApi = response.asOpt[MfaURI].getOrElse(throw new IllegalArgumentException(s"Failed to build MfaURI $response! for $journeyId"))
-      if (mfaApi.apiURI.isEmpty || mfaApi.webURI.isEmpty) throw new IllegalArgumentException(s"URLs found to be empty $response for $journeyId!")
-      mfaApi
-    }
+        val mfaApi = response.asOpt[MfaURI].getOrElse(throw new IllegalArgumentException(s"Failed to build MfaURI $response! for $journeyId"))
+        if (mfaApi.apiURI.isEmpty || mfaApi.webURI.isEmpty) throw new IllegalArgumentException(s"URLs found to be empty $response for $journeyId!")
+        mfaApi
+      }
   }
 
   def mfaValidateOutcome(accounts:Accounts, path:String, journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MFAAPIResponse] = {
     // Invoke MFA using path supplied from client.
-    mfaAPI(path).flatMap { response =>
+    def updateMainAuthority(auth: AuthExchangeResponse): Future[Unit] = {
+      val mainAuthority = hc.copy(authorization = Some(Authorization(auth.access_token.authToken)))
+      updateCredStrength()(mainAuthority)
+    }
+
+    mfaAPI(path).flatMap { response ⇒
       Logger.info(s"Received status ${response.status} for $journeyId.")
-
-      def updateMainAuthority(auth: AuthExchangeResponse): Future[Unit] = {
-        val mainAuthority = hc.copy(authorization = Some(Authorization(auth.access_token.authToken)))
-        authConnector.updateCredStrength()(mainAuthority)
-      }
-
       response.status match {
-        case "VERIFIED" =>
+        case "VERIFIED" ⇒ {
           for {
-            _ <- authConnector.updateCredStrength()(hc)
-            bearerToken <- authConnector.exchangeForBearer(accounts.credId)
-            _ <- updateMainAuthority(bearerToken)
-          } yield MFAAPIResponse(routeToTwoFactor = false, None, authUpdated = true)
-
-        case "UNVERIFIED" =>
-          mfaStart(accounts, journeyId).map(resp => MFAAPIResponse(routeToTwoFactor = true, Some(resp), authUpdated = false))
-
-        case "NOT_REQUIRED" | "SKIPPED" =>
-          Future.successful(MFAAPIResponse(routeToTwoFactor = false, None, authUpdated = false))
-
-        case _ =>
-          val error = s"Received unknown status code ${response.status} from MFA. Journey id $journeyId"
+            _ ← updateCredStrength()(hc)
+            bearerToken ← exchangeForBearer(accounts.credId)
+            _  ← updateMainAuthority(bearerToken)
+          } yield (MFAAPIResponse(routeToTwoFactor = false, None, authUpdated = true))
+        }
+        case "UNVERIFIED" ⇒ {
+          mfaStart(accounts, journeyId).map(r ⇒ MFAAPIResponse(routeToTwoFactor = true, Some(r), authUpdated = false))
+        }
+        case "NOT_REQUIRED" | "SKIPPED" ⇒ Future.successful(MFAAPIResponse(routeToTwoFactor = false, None, authUpdated = false))
+        case _ ⇒ {
+          val error = s"Received unknown status code [${response.status}] from MFA. Journey id [$journeyId]"
           Logger.error(error)
           throw new IllegalArgumentException(error)
+        }
       }
     }
   }
 
   def mfaAPI(path:String)(implicit hc:HeaderCarrier) = {
-    genericConnector.doGet(getHost, path, getPort, hc)
+    genericConnector.doGet(host, path, port, hc)
       .map { response =>
-      response.asOpt[JourneyResponse].getOrElse(throw new IllegalArgumentException("Failed to build MfaURI"));
-    }
+        response.asOpt[JourneyResponse].getOrElse(throw new IllegalArgumentException("Failed to build MfaURI"));
+      }
   }
 
   def start(accounts:Accounts)(mfa:MFARequest)(journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MFAAPIResponse] = {
@@ -141,7 +177,10 @@ trait MFAIntegration extends OrchestrationService {
     mfaValidateOutcome(accounts, mfa.apiURI.getOrElse(throw new IllegalArgumentException("Failed to obtain URI!")), journeyId)
   }
 
-  def getHost = getConfigProperty("multi-factor-authentication","host")
+  private def updateCredStrength()(implicit hc: HeaderCarrier): Future[Unit] = {Future(Unit)}
 
-  def getPort = getConfigProperty("multi-factor-authentication","port").toInt
+  private def exchangeForBearer(credId: String)(implicit hc: HeaderCarrier): Future[AuthExchangeResponse] = {
+    Future(AuthExchangeResponse(BearerToken("", DateTime.now), 1000))
+  }
+
 }

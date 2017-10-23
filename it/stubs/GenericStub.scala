@@ -4,15 +4,15 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 
 object GenericStub {
 
-  def versionCheckPassed() : Unit = {
+  def versionCheckPassed(journeyId: String) : Unit = {
     val response =
       """
         |{"upgrade":true}
       """.stripMargin
-    stubPostSuccess("/profile/native-app/version-check", response)
+    stubPostSuccess(s"/profile/native-app/version-check", response, journeyId)
   }
 
-  def taxSummarySucceeds(nino : String, year: String) : Unit = {
+  def taxSummarySucceeds(nino : String, year: String, journeyId: String) : Unit = {
     val response =
       s"""
         |{
@@ -525,10 +525,10 @@ object GenericStub {
         |  }
         |}
       """.stripMargin
-    stubGetSuccess(s"/income/$nino/tax-summary/$year", response)
+    stubGetSuccess(s"/income/$nino/tax-summary/$year", response, journeyId)
   }
 
-  def taxCreditSummarySucceeds(nino: String) : Unit = {
+  def taxCreditSummarySucceeds(nino: String, journeyId: String) : Unit = {
     val response =
       s"""
         |{
@@ -735,38 +735,38 @@ object GenericStub {
         |  }
         |}
       """.stripMargin
-    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-summary", response)
+    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-summary", response, journeyId)
   }
 
-  def taxCreditsDecisionSucceeds(nino: String) : Unit = {
+  def taxCreditsDecisionSucceeds(nino: String, journeyId: String) : Unit = {
     val response =
       """
         |{"showData":true}
       """.stripMargin
-    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-decision", response)
+    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-decision", response, journeyId)
   }
 
-  def taxCreditsSubmissionStateIsEnabled() : Unit = {
+  def taxCreditsSubmissionStateIsEnabled(journeyId: String) : Unit = {
     val response =
       """
         |{"submissionState":false}
       """.stripMargin
-    stubGetSuccess("/income/tax-credits/submission/state/enabled", response)
+    stubGetSuccess(s"/income/tax-credits/submission/state/enabled", response, journeyId)
   }
 
-  def pushRegistrationSucceeds() : Unit = {
-    stubPostSuccess("/push/registration", """{}""")
+  def pushRegistrationSucceeds(journeyId: String) : Unit = {
+    stubPostSuccess(s"/push/registration", """{}""", journeyId)
   }
 
-  private def stubGetSuccess(path: String, response: String) : Unit = {
-    stubFor(get(urlEqualTo(path))
+  private def stubGetSuccess(path: String, response: String, queryParam: String) : Unit = {
+    stubFor(get(urlEqualTo(s"$path$queryParam"))
       .willReturn(aResponse()
         .withStatus(200)
         .withBody(response)))
   }
 
-  private def stubPostSuccess(path: String, response: String) : Unit = {
-    stubFor(post(urlEqualTo(path))
+  private def stubPostSuccess(path: String, response: String, queryParam: String) : Unit = {
+    stubFor(post(urlEqualTo(s"$path$queryParam"))
       .willReturn(aResponse()
         .withStatus(200)
         .withBody(response)))

@@ -17,8 +17,13 @@
 package uk.gov.hmrc.ngc.orchestration.config
 
 import com.google.inject.AbstractModule
+import com.google.inject.name.Names
 import play.api.Mode.Mode
 import play.api.{Configuration, Environment}
+import uk.gov.hmrc.auth.core.AuthConnector
+import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
+import uk.gov.hmrc.ngc.orchestration.services.LiveOrchestrationService
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.config.ServicesConfig
 
 class GuiceModule(environment: Environment, configuration: Configuration) extends AbstractModule with ServicesConfig {
@@ -26,5 +31,35 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
   override protected lazy val mode: Mode = environment.mode
   override protected lazy val runModeConfiguration: Configuration = configuration
 
-  override def configure() = {}
+  override def configure() = {
+    bind(classOf[AuthConnector]).to(classOf[ConcreteAuthConnector])
+    bind(classOf[AuditConnector]).toInstance(NextGenAuditConnector)
+
+    bindConstant().annotatedWith(Names.named("serviceMax"))
+      .to(configuration.getInt("supported.generic.service.max").getOrElse(1))
+
+    bindConstant().annotatedWith(Names.named("eventMax"))
+      .to(configuration.getInt("supported.generic.event.max").getOrElse(1))
+
+    bindConstant().annotatedWith(Names.named("confidenceLevel"))
+      .to(configuration.getInt("controllers.confidenceLevel").getOrElse(throw new Exception()))
+
+    bindConstant().annotatedWith(Names.named("customer-profile.host"))
+      .to(configuration.getString("microservice.services.customer-profile.host").getOrElse(throw new Exception()))
+
+    bindConstant().annotatedWith(Names.named("customer-profile.port"))
+      .to(configuration.getInt("microservice.services.customer-profile.port").getOrElse(throw new Exception()))
+
+    bindConstant().annotatedWith(Names.named("mfa.host"))
+      .to(configuration.getString("microservice.services.multi-factor-authentication.host").getOrElse(throw new Exception()))
+
+    bindConstant().annotatedWith(Names.named("mfa.port"))
+      .to(configuration.getInt("microservice.services.multi-factor-authentication.port").getOrElse(throw new Exception()))
+
+    bindConstant().annotatedWith(Names.named("pollMaxAge"))
+      .to(configuration.getInt("poll.success.maxAge").getOrElse(throw new Exception(s"Failed to resolve config key poll.success.maxAge")))
+
+    bind(classOf[Configuration]).annotatedWith(Names.named("config")).toInstance(configuration)
+
+  }
 }

@@ -20,7 +20,7 @@ import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.{Configuration, Logger, LoggerLike, Play}
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier}
-import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
+import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.AuditExtensions._
@@ -94,8 +94,6 @@ trait ExecutorFactory {
 
   val auditEventExecutor = AuditEventExecutor()
 
-  val maxServiceCalls: Int
-  val maxEventCalls: Int
   val serviceExecutors: Map[String, ServiceExecutor] = Map(
     Seq(
       versionCheck,
@@ -152,7 +150,7 @@ case class VersionCheckExecutor() extends ServiceExecutor {
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = "/profile/native-app/version-check"
 
-  override def connector: GenericConnector = GenericConnector
+  override def connector: GenericConnector = new GenericConnector
 
   override val cacheTime: Option[Long] = None
 }
@@ -167,7 +165,7 @@ case class DeskProFeedbackExecutor() extends ServiceExecutor {
 
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = GenericConnector
+  override def connector: GenericConnector = new GenericConnector
 }
 
 case class PushNotificationGetMessageExecutor() extends ServiceExecutor {
@@ -184,7 +182,7 @@ case class PushNotificationGetMessageExecutor() extends ServiceExecutor {
 
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = GenericConnector
+  override def connector: GenericConnector = new GenericConnector
 }
 
 case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
@@ -201,10 +199,10 @@ case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
 
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = GenericConnector
+  override def connector: GenericConnector = new GenericConnector
 }
 
-case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
+case class AuditEventExecutor(audit: Audit = new Audit("native-apps", NextGenAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
 
   override val executorName: String = "ngc-audit-event"
   override val executionType: String = "EVENT"
@@ -268,7 +266,7 @@ case class WidgetSurveyDataServiceExecutor() extends ServiceExecutor {
   override val executionType: String = POST
   override val executorName: String = "survey-widget"
 
-  override def connector: GenericConnector = GenericConnector
+  override def connector: GenericConnector = new GenericConnector
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = s"/native-app-widget/${nino}/widget-data"
 }
@@ -277,7 +275,7 @@ case class ClaimantDetailsServiceExecutor() extends ServiceExecutor {
   override val serviceName: String = "personal-income"
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = GenericConnector
+  override def connector: GenericConnector = new GenericConnector
 
   override val executorName: String = "claimant-details"
 

@@ -55,7 +55,7 @@ object Http {
   private def perform(url: String)(fun: WSRequest => Future[WSResponse])(implicit hc: HeaderCarrier): WSHttpResponse =
     await(fun(WS.url(url).withHeaders(hc.headers: _*).withRequestTimeout(20000 milliseconds)).map(new WSHttpResponse(_)))
 
-  private def await[A](future: Future[A]) = Await.result(future, Duration(10, SECONDS))
+  private def await[A](future: Future[A]) = Await.result(future, Duration(30, SECONDS))
 
 }
 

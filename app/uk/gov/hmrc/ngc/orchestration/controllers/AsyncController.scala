@@ -20,15 +20,14 @@ import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
 import uk.gov.hmrc.api.controllers._
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.repository.AsyncRepository
-import uk.gov.hmrc.ngc.orchestration.controllers.action.AccountAccessControlWithHeaderCheck
 import uk.gov.hmrc.play.asyncmvc.async.Cache
 import uk.gov.hmrc.play.asyncmvc.model.{TaskCache, ViewCodes}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
-import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
-import uk.gov.hmrc.http.HeaderCarrier
+import scala.concurrent.Future
 
 case class AsyncResponse(value:JsObject, nino:Nino)
 object AsyncResponse {
@@ -59,7 +58,6 @@ trait AsyncController extends BaseController with HeaderValidator with ErrorHand
 
   val authToken = "AuthToken"
 
-  val accessControl: AccountAccessControlWithHeaderCheck
   val repository:AsyncRepository
 
   /**
@@ -100,7 +98,6 @@ trait AsyncController extends BaseController with HeaderValidator with ErrorHand
 }
 
 object LiveAsyncController extends AsyncController {
-  override val accessControl: AccountAccessControlWithHeaderCheck = AccountAccessControlWithHeaderCheck
   override val repository: AsyncRepository = AsyncRepository()
   override val app: String = "Live Async Controller"
 }

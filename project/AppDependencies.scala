@@ -19,6 +19,7 @@ object AppDependencies {
   private val scalaTestVersion = "3.0.4"
   private val wireMockVersion = "2.8.0"
   private val scalaTestPlusVersion = "2.0.1"
+  private val scalaMockVersion = "3.6.0"
 
   val compile = Seq(
     ws,
@@ -44,7 +45,9 @@ object AppDependencies {
         "org.scalatest" %% "scalatest" % scalaTestVersion % scope,
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
-        "org.mockito" % "mockito-core" % mockitoVersion % scope
+//        "org.mockito" % "mockito-core" % mockitoVersion % scope,
+        "org.scalamock" %% "scalamock-scalatest-support" % scalaMockVersion % scope,
+        "org.scalatestplus.play" %% "scalatestplus-play" % scalaTestPlusVersion % scope
       )
     }.test
   }
@@ -59,8 +62,8 @@ object AppDependencies {
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
         "com.github.tomakehurst" % "wiremock" % wireMockVersion % scope,
-        "org.mockito" % "mockito-core" % mockitoVersion % scope,
-        "org.scalatestplus.play" %% "scalatestplus-play" % scalaTestPlusVersion % scope
+        "org.mockito" % "mockito-core" % mockitoVersion % scope
+
       )
     }.test
   }

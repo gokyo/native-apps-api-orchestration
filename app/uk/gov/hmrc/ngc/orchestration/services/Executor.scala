@@ -19,7 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.services
 import play.api.libs.json._
 import play.api.{Configuration, Logger, Play}
 import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse}
-import uk.gov.hmrc.ngc.orchestration.connectors.{AuthConnector, GenericConnector}
+import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.ResponseCode
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -91,7 +91,7 @@ case class PushRegistration(connector: GenericConnector, inputRequest:JsValue, j
   }
 }
 
-case class TaxCreditSummary(authConnector:AuthConnector, connector: GenericConnector, journeyId: Option[String]) extends Executor {
+case class TaxCreditSummary(connector: GenericConnector, journeyId: Option[String]) extends Executor {
   override val id: String = "taxCreditSummary"
   override val serviceName: String = "personal-income"
 
