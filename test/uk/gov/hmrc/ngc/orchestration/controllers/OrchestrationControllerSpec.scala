@@ -16,13 +16,28 @@
 
 //package uk.gov.hmrc.ngc.orchestration.controllers
 
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import org.scalatest.concurrent.{Eventually, ScalaFutures}
+import org.mockito.{ArgumentMatchers, Mockito}
+import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json._
-import play.api.test.FakeApplication
+import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.auth.core.retrieve.Retrievals._
+import uk.gov.hmrc.auth.core.retrieve.{LegacyCredentials, Retrieval, ~}
+import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.ngc.orchestration.controllers.LiveOrchestrationController
+import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, PreFlightCheckResponse}
+import uk.gov.hmrc.ngc.orchestration.services.{LiveOrchestrationService, PreFlightRequest}
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
+
+import scala.concurrent.Future
+import scala.concurrent.duration.Duration
 
 
 
@@ -48,23 +63,46 @@ import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 //  }
 //}
 
-//class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with ScalaFutures with Eventually with StubApplicationConfiguration {
-//
-//  implicit val system = ActorSystem()
-//  implicit val materializer = ActorMaterializer()
-//
-//  override lazy val fakeApplication = FakeApplication(additionalConfiguration = config)
-//
-//  "preFlightCheck live controller " should {
-//
-//    "return the Pre-Flight Check Response successfully" in {
-//
-//      val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
-//      status(result) shouldBe 200
-//      contentAsJson(result) shouldBe Json.parse("""{"upgradeRequired":true,"accounts":{"nino":"CS700100A","routeToIV":false,"routeToTwoFactor":false,"journeyId":"102030394AAA"}}""")
-//      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-//
-//    }
+class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with MockitoSugar {
+
+  implicit val system = ActorSystem()
+  implicit val materializer = ActorMaterializer()
+  implicit val hc = HeaderCarrier()
+
+  type AccountsRetrieval = Retrieval[~[~[~[~[~[Option[String], Option[String]], Option[AffinityGroup]],
+    LegacyCredentials], Option[String]], ConfidenceLevel]]
+  type GrantAccessRetrieval = Retrieval[~[~[Option[String], ConfidenceLevel], Option[String]]]
+
+  val accountsRetrievals = nino and saUtr and affinityGroup and authProviderId and credentialStrength and confidenceLevel
+  val grantAccessRetrievals = nino and confidenceLevel and userDetailsUri
+
+  val mockLiveOrchestrationService = mock[LiveOrchestrationService]
+  val mockAuthConnector = mock[AuthConnector]
+
+  val journeyId = UUID.randomUUID().toString
+
+  def mockServicePreFlightCall(response: PreFlightCheckResponse) = {
+    Mockito.when(mockLiveOrchestrationService.preFlightCheck(ArgumentMatchers.any[PreFlightRequest](), ArgumentMatchers.any[Option[String]]())(ArgumentMatchers.any[HeaderCarrier]()))
+      .thenReturn(Future.successful(response))
+  }
+
+  "preFlightCheck live controller" should {
+
+    "return the Pre-Flight Check Response successfully" in {
+
+      val expectation = PreFlightCheckResponse(true, Accounts(Some(Nino("CS700100A")), None, false, false, journeyId, "some-cred-id", "Individual"))
+      mockServicePreFlightCall(expectation)
+      val versionBody = Json.parse("""{"os":"android", "version":"1.0.1"}""")
+      val versionRequest = FakeRequest().withBody(versionBody).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json")
+
+      val controller = new LiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, 10, 10, 200, 30000)
+      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))(Duration(10,TimeUnit.SECONDS))
+      status(result) shouldBe 200
+      contentAsJson(result) shouldBe Json.toJson(expectation)
+      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
+    }
+  }
+}
 
 //    "return the Pre-Flight Check Response successfully with the supplied journeyId" in new Success {
 //      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))

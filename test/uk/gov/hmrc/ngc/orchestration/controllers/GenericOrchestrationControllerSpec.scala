@@ -25,7 +25,7 @@ import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.ngc.orchestration.controllers.LiveOrchestrationController
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
-class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with FileResource {
+class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplication with FileResource {
 
   implicit val system = ActorSystem("test-system")
   implicit val materializer = ActorMaterializer()
@@ -33,10 +33,6 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
   val token = "Bearer 123456789"
 
   val pollResponse: JsValue = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
-
-//  val service: LiveOrchestrationService = mock[LiveOrchestrationService]
-
-//  val authConnector: AuthConnector = mock[AuthConnector]
 
   "LiveOrchestrationController call triggering generic orchestration implementation" should {
 

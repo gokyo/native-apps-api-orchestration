@@ -18,14 +18,14 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
-import com.google.inject.{Inject, Singleton}
 import com.google.inject.name.Named
+import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json._
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.api.service.Auditor
-import uk.gov.hmrc.auth.core.{AuthConnector, AuthorisedFunctions}
+import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.config.ConfiguredCampaigns
@@ -37,8 +37,8 @@ import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.time.TaxYear
 
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.concurrent.Future._
-import scala.concurrent.{ExecutionContext, Future}
 
 case class OrchestrationServiceRequest(requestLegacy: Option[JsValue], request: Option[OrchestrationRequest])
 
@@ -51,10 +51,11 @@ object DeviceVersion {
 case class PreFlightRequest(os: String, version:String, mfa:Option[MFARequest])
 
 object PreFlightRequest {
+  implicit val mfa = MFARequest.formats
   implicit val formats = Json.format[PreFlightRequest]
 }
 
-case class JourneyRequest(userIdentifier: String, continueUrl: String, origin: String, affinityGroup: String, context: String, serviceUrl: Option[String], scopes: Seq[String]) //registrationSkippable: Boolean)
+case class JourneyRequest(userIdentifier: String, continueUrl: String, origin: String, affinityGroup: String, context: String, serviceUrl: Option[String], scopes: Seq[String])
 
 object JourneyRequest {
   implicit val format = Json.format[JourneyRequest]
@@ -71,11 +72,11 @@ case class ServiceState(state:String, func: Accounts => MFARequest => Option[Str
 
 trait OrchestrationService {
 
-  def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = ???
+  def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = ???
 
-  def startup(inputRequest:JsValue, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = ???
+  def startup(inputRequest:JsValue, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject] = ???
 
-  def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = ???
+  def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject] = ???
 }
 
 @Singleton
@@ -88,7 +89,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
                                          @Named("confidenceLevel") override val confLevel: Int)
   extends OrchestrationService with Authorisation with ExecutorFactory with Auditor with ConfiguredCampaigns {
 
-  override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = {
+  override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
     withAudit("preFlightCheck", Map.empty) {
       for {
         accounts <- getAccounts(journeyId)
@@ -109,7 +110,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     }
   }
 
-  override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
+  override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
     grantAccess(nino)
     request match {
       case OrchestrationServiceRequest(None, Some(request)) ⇒
@@ -119,7 +120,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     }
   }
 
-  override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject]= {
+  override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject]= {
     withAudit("startup", Map("nino" -> nino.value)) {
       val year = TaxYear.current.currentYear
 
@@ -131,7 +132,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     }
   }
 
-  private def buildResponse(inputRequest:JsValue, nino: String, year: Int, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext) : Future[Seq[JsObject]] = {
+  private def buildResponse(inputRequest:JsValue, nino: String, year: Int, journeyId: Option[String])(implicit hc: HeaderCarrier) : Future[Seq[JsObject]] = {
     val futuresSeq: Seq[Future[Option[Result]]] = Seq(
       TaxSummary(genericConnector, journeyId),
       TaxCreditSummary(genericConnector, journeyId),
@@ -190,14 +191,14 @@ class SandboxOrchestrationService extends OrchestrationService with FileResource
                                 "404893573716" -> "CS700108A",
                                 "404893573717" -> "CS700109A")
 
-  override def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[PreFlightCheckResponse] = {
+  override def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
     successful(hc.extraHeaders.find(_._1 equals "X-MOBILE-USER-ID") match {
       case  Some((_, value))  => buildPreFlightResponse(value)
       case _ => buildPreFlightResponse(defaultUser)
     })
   }
 
-  override def startup(jsValue:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
+  override def startup(jsValue:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject] = {
     successful(Json.obj("status" -> Json.obj("code" -> "poll")))
   }
 
@@ -213,7 +214,7 @@ class SandboxOrchestrationService extends OrchestrationService with FileResource
     cache.put(journeyId.getOrElse("genericExecution"), all.mkString("|"))
   }
 
-  override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsObject] = {
+  override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
     request match {
       case OrchestrationServiceRequest(None, Some(orchestrationRequest)) ⇒  {
         recordGenericServiceExecution(orchestrationRequest, journeyId)(hc)

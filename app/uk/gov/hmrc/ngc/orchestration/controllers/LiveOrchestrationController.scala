@@ -21,7 +21,7 @@ import javax.inject.{Named, Singleton}
 import com.google.inject.Inject
 import play.api.Logger
 import play.api.http.HeaderNames
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
 import play.api.mvc._
 import uk.gov.hmrc.api.controllers.HeaderValidator
 import uk.gov.hmrc.api.service.Auditor
@@ -54,13 +54,16 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
       errorWrapper {
         implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
         implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
-        Json.toJson(request.body).asOpt[PreFlightRequest].fold(parsingFailure) { req ⇒
-          hc.authorization match {
-            case Some(auth) ⇒ service.preFlightCheck(req , journeyId).map { response ⇒
-              Ok(Json.toJson(response)).withSession(authToken -> auth.value)
+        request.body.validate[PreFlightRequest] match {
+          case JsSuccess(preFlightRequest, _) ⇒ {
+            hc.authorization match {
+              case Some(auth) ⇒ service.preFlightCheck(preFlightRequest, journeyId).map { response ⇒
+                Ok(Json.toJson(response)).withSession(authToken -> auth.value)
+              }
+              case _ ⇒ authenticationFailure
             }
-            case _ ⇒ authenticationFailure
           }
+          case _ ⇒ parsingFailure
         }
       }
     }
