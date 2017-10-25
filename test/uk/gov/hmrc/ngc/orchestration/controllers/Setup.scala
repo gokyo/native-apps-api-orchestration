@@ -554,10 +554,10 @@ class TestServiceFailureGenericConnector(pathFailMap: Map[String, Boolean], upgr
 
 }
 
-trait AuthWithoutTaxSummary extends Setup with AuthorityTest {
+trait FailureNoAuthority extends Setup with AuthorityTest {
 
   override lazy val authConnector = new TestAuthConnector(None) {
-    lazy val exception = new NinoNotFoundOnAccount("The user must have a National Insurance Number")
+    lazy val exception = new Upstream4xxResponse("/auth/authority returned 401", 401, 500)
     override def accounts(journeyId:Option[String])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Accounts] = Future.failed(exception)
     override def grantAccess(taxId:Option[Nino])(implicit hc: HeaderCarrier, ec: ExecutionContext): Future[Authority] = Future.failed(exception)
   }
