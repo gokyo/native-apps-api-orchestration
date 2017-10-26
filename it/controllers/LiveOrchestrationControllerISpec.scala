@@ -113,7 +113,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.status shouldBe 401
     }
 
-    "return response with MFA URIs and routeToTwoFactor equal to true when cred-strength is not strong" in {
+    "call the MFA API URI and return routeToTwoFactor=true when cred-strength is not strong" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
@@ -153,7 +153,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.status shouldBe 400
     }
 
-    "return the response mfa URIs and routeToTwoFactor equal to true when MFA API returns UNVERIFIED state" in {
+    "call the MFA API URI and return routeToTwoFactor=true when MFA API returns UNVERIFIED state" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
@@ -170,7 +170,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe true
     }
 
-    "return response with routeToTwoFactor set to false when MFA returns NOT_REQUIRED state" in {
+    "return response with routeToTwoFactor=false when MFA returns NOT_REQUIRED state" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
@@ -187,7 +187,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
     }
 
-    "return response with routeToTwoFactor set to false when MFA returns SKIPPED state" in {
+    "return response with routeToTwoFactor=false when MFA returns SKIPPED state" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
