@@ -4,19 +4,19 @@ object AppDependencies {
   import play.core.PlayVersion
   import play.sbt.PlayImport._
 
-  private val microserviceBootstrapVersion = "6.9.0"
-  private val domainVersion = "4.1.0"
-  private val playHmrcApiVersion = "2.0.0"
-  private val hmrcEmailAddressVersion = "1.1.0"
+  private val microserviceBootstrapVersion = "6.11.0"
+  private val domainVersion = "5.0.0"
+  private val playHmrcApiVersion = "2.1.0"
+  private val hmrcEmailAddressVersion = "2.1.0"
   private val microserviceAsyncVersion = "2.0.0"
   private val reactiveMongoVersion = "5.2.0"
   private val taxYearVersion = "0.3.0"
 
   private val hmrcTestVersion = "2.4.0"
-  private val mockitoVersion = "2.10.0"
+  private val mockitoVersion = "2.11.0"
   private val pegdownVersion = "1.6.0"
   private val scalaTestVersion = "3.0.4"
-  private val wireMockVersion = "2.8.0"
+  private val wireMockVersion = "2.9.0"
   private val scalaTestPlusVersion = "2.0.1"
 
   val compile = Seq(
