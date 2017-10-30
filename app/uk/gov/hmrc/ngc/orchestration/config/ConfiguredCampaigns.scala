@@ -17,7 +17,7 @@
 package uk.gov.hmrc.ngc.orchestration.config
 
 import play.api.Play
-import play.api.libs.json.{JsObject, Json, Writes}
+import play.api.libs.json.{JsObject, Json}
 
 
 trait ConfiguredCampaigns {
@@ -56,5 +56,5 @@ object Campaign {
     Campaign(campaignId, enabled = false, None, None, None)
   }
 
-  implicit val writes: Writes[Campaign] = Json.writes[Campaign]
+  implicit val format = Json.format[Campaign]
 }

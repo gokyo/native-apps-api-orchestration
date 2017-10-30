@@ -40,7 +40,7 @@ import uk.gov.hmrc.time.DateTimeUtils
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
-import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException}
+import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException, Upstream4xxResponse}
 import uk.gov.hmrc.play.HeaderCarrierConverter
 
 
@@ -66,6 +66,10 @@ trait ErrorHandling {
       case ex: NinoNotFoundOnAccount =>
         log("User has no NINO. Unauthorized!")
         Unauthorized(Json.toJson(ErrorUnauthorizedNoNino))
+
+      case ex: Upstream4xxResponse if ex.upstreamResponseCode == 401 ⇒
+        log("Upstream service returned 401")
+        Status(ErrorUnauthorizedUpstream.httpStatusCode)(Json.toJson(ErrorUnauthorizedUpstream))
 
       case e: Exception =>
         Logger.error(s"Native Error - $app Internal server error: ${e.getMessage}", e)

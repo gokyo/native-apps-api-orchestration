@@ -6,7 +6,7 @@ object AuthStub {
 
   private val oid: String = "$oid"
 
-  def requestIsAuthenticated(nino: String, confidenceLevel: Int = 200, credentialStrength: String = "strong"): Unit = {
+  def authRecordExists(nino: String, confidenceLevel: Int = 200, credentialStrength: String = "strong"): Unit = {
     stubFor(get(urlEqualTo("/auth/authority"))
       .willReturn(aResponse()
         .withStatus(200)
@@ -59,6 +59,12 @@ object AuthStub {
              |  "credId": "cred-id"
              |}
            """.stripMargin)))
+  }
+
+  def authRecordDoesNotExist(): Unit = {
+    stubFor(get(urlEqualTo("/auth/authority"))
+      .willReturn(aResponse()
+        .withStatus(401)))
   }
 
 }

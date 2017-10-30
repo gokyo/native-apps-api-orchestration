@@ -68,7 +68,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
 
   override lazy val fakeApplication = FakeApplication(additionalConfiguration = config)
 
-  "preFlightCheck live controller " should {
+  "preFlightCheck live controller" should {
 
     "return the Pre-Flight Check Response successfully" in new Success {
       val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
@@ -91,7 +91,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
     }
 
-    "return 401 HTTP status code when calls to retrieve the auth account fail" in new AuthWithoutTaxSummary {
+    "return 401 HTTP status code when calls to retrieve the auth account fail" in new FailureNoAuthority {
       val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
       status(result) shouldBe 401
     }
@@ -110,22 +110,19 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return 500 response when the MFA service fails" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "UNVERIFIED"
       override lazy val startMfaJourney = Map("/multi-factor-authentication/journey" -> false)
 
+      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithMFA().withHeaders("Authorization" -> "Bearer 123456789")))
+
+      status(result) shouldBe 500
+    }
+
+    "return bad request when the MFA operation supplied is invalid" in new SuccessMfa {
       val result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithMFA("invalid").withHeaders("Authorization" -> "Bearer 123456789")))
 
       status(result) shouldBe 400
     }
-
-    "return bad request when the MFA operation supplied is invalid" in new SuccessMfa {
-        override lazy val mfaOutcomeStatus = "UNVERIFIED"
-
-        val result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithMFA("invalid").withHeaders("Authorization" -> "Bearer 123456789")))
-
-        status(result) shouldBe 400
-      }
-    }
+  }
 
   "preFlightCheck live controller with MFA outcome request " should {
 
