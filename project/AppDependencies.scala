@@ -8,7 +8,7 @@ object AppDependencies {
   private val domainVersion = "5.0.0"
   private val playHmrcApiVersion = "2.1.0"
   private val hmrcEmailAddressVersion = "2.1.0"
-  private val microserviceAsyncVersion = "2.1.0"
+  private val microserviceAsyncVersion = "2.0.0"
   private val reactiveMongoVersion = "5.2.0"
   private val taxYearVersion = "0.3.0"
 
