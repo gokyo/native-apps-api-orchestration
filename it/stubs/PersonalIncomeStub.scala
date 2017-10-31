@@ -576,17 +576,17 @@ object PersonalIncomeStub {
     stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-summary", responseJson)
   }
 
-  def taxCreditsDecisionSucceeds(nino: String): Unit = {
+  def taxCreditsDecisionSucceeds(nino: String, showData: Boolean = true): Unit = {
     val response =
-      """
-        |{"showData":true}
+      s"""
+        |{"showData":$showData}
       """.stripMargin
     stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-decision", response)
   }
 
   def taxCreditsSubmissionStateIsEnabled(): Unit = {
     val response =
-      """
+      s"""
         |{"submissionState": true}
       """.stripMargin
     stubGetSuccess("/income/tax-credits/submission/state/enabled", response)

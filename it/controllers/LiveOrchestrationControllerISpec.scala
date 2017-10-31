@@ -269,5 +269,103 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       )
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
     }
+
+    "return a http 200 status with a body status code 'poll' for an authenticated user, " +
+      "with poll asynchronously returning 401 when the Tax Summary response NINO does match the authority NINO" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      authRecordExists(nino)
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson("AB123456D"))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      val postRequest = """{
+                          |  "device": {
+                          |    "osVersion": "10.3.3",
+                          |    "os": "ios",
+                          |    "appVersion": "4.9.0",
+                          |    "model": "iPhone8,2"
+                          |  },
+                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |}""".stripMargin
+      val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 200
+      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.allHeaders("Set-Cookie").head shouldNot be(empty)
+      val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
+
+      val pollResponse = eventually {
+        await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
+      }
+      pollResponse.status shouldBe 401
+    }
+
+    "return a http 200 status with a body status code 'poll' for an authenticated user, " +
+      "with poll asynchronously returning 401 when the poll request NINO does not match the authority NINO" in {
+      val nino = "CS700100A"
+      val someOtherNino = "AB123456C"
+      writeAuditSucceeds()
+      authRecordExists(nino)
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      val postRequest = """{
+                          |  "device": {
+                          |    "osVersion": "10.3.3",
+                          |    "os": "ios",
+                          |    "appVersion": "4.9.0",
+                          |    "model": "iPhone8,2"
+                          |  },
+                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |}""".stripMargin
+      val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 200
+      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.allHeaders("Set-Cookie").head shouldNot be(empty)
+      val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
+
+      val pollResponse = eventually {
+        await(new Resource(s"/native-app/$someOtherNino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
+      }
+      pollResponse.status shouldBe 401
+    }
+
+    "return a http 200 status with a body status code 'poll' for an authenticated user, " +
+      "with poll asynchronously returning a taxCreditSummary attribute with no summary data when tax credit decision returns false" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      authRecordExists(nino)
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino, showData = false)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      val postRequest = """{
+                          |  "device": {
+                          |    "osVersion": "10.3.3",
+                          |    "os": "ios",
+                          |    "appVersion": "4.9.0",
+                          |    "model": "iPhone8,2"
+                          |  },
+                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |}""".stripMargin
+      val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 200
+      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.allHeaders("Set-Cookie").head shouldNot be(empty)
+      val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
+
+      val pollResponse = eventually {
+        await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
+      }
+      pollResponse.status shouldBe 200
+      (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
+      (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.obj()
+      (pollResponse.json \ "state" \ "enableRenewals").as[Boolean] shouldBe true
+      Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
+    }
   }
 }
