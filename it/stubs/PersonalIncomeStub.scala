@@ -1,18 +1,26 @@
+/*
+ * Copyright 2017 HM Revenue & Customs
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package stubs
 
-import com.github.tomakehurst.wiremock.client.WireMock._
+import stubs.StubShortcuts._
 
-object GenericStub {
+object PersonalIncomeStub {
 
-  def versionCheckPassed(journeyId: String) : Unit = {
-    val response =
-      """
-        |{"upgrade":true}
-      """.stripMargin
-    stubPostSuccess(s"/profile/native-app/version-check", response, journeyId)
-  }
-
-  def taxSummarySucceeds(nino : String, year: String, journeyId: String) : Unit = {
+  def taxSummarySucceedsOld(nino : String, year: String) : Unit = {
     val response =
       s"""
         |{
@@ -525,251 +533,63 @@ object GenericStub {
         |  }
         |}
       """.stripMargin
-    stubGetSuccess(s"/income/$nino/tax-summary/$year", response, journeyId)
+    stubGetSuccess(s"/income/$nino/tax-summary/$year", response)
   }
 
-  def taxCreditSummarySucceeds(nino: String, journeyId: String) : Unit = {
+  // Returns a small extract of the JSON that the real personal-income service would return.
+  // The full JSON is not important here because all this service does is passes it through unmodified.
+  def taxSummaryJson(nino: String): String =
+    s"""
+       |{
+       |  "taxSummaryDetails": {
+       |    "nino": "$nino"
+       |  },
+       |  "estimatedIncomeWrapper": {
+       |  }
+       |}
+        """.stripMargin
+
+
+  def taxSummarySucceeds(nino : String, year: String, taxSummaryJson: String) : Unit = {
+    stubGetSuccess(s"/income/$nino/tax-summary/$year", taxSummaryJson)
+  }
+
+  val taxCreditSummaryJson: String =
+    """
+      |{
+      |  "paymentSummary": {
+      |    "workingTaxCredit": {
+      |      "paymentSeq": [
+      |        {
+      |          "amount": 160.45,
+      |          "paymentDate": 1508367600000,
+      |          "oneOffPayment": false
+      |        }
+      |      ]
+      |    }
+      |  }
+      |}
+    """.
+      stripMargin
+
+  def taxCreditSummarySucceeds(nino: String, responseJson: String) : Unit = {
+    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-summary", responseJson)
+  }
+
+  def taxCreditsDecisionSucceeds(nino: String, showData: Boolean = true): Unit = {
     val response =
       s"""
-        |{
-        |  "paymentSummary": {
-        |    "workingTaxCredit": {
-        |      "paymentSeq": [
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1508367600000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1508972400000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1509580800000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1510185600000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1510790400000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1511395200000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1512000000000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 160.45,
-        |          "paymentDate": 1512604800000,
-        |          "oneOffPayment": false
-        |        }
-        |      ],
-        |      "paymentFrequency": "WEEKLY"
-        |    },
-        |    "childTaxCredit": {
-        |      "paymentSeq": [
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1508367600000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1508972400000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1509580800000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1510185600000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1510790400000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1511395200000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1512000000000,
-        |          "oneOffPayment": false
-        |        },
-        |        {
-        |          "amount": 140.12,
-        |          "paymentDate": 1512604800000,
-        |          "oneOffPayment": false
-        |        }
-        |      ],
-        |      "paymentFrequency": "WEEKLY"
-        |    },
-        |    "paymentEnabled": true,
-        |    "totalsByDate": [
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1508367600000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1508972400000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1509580800000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1510185600000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1510790400000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1511395200000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1512000000000
-        |      },
-        |      {
-        |        "amount": 300.57,
-        |        "paymentDate": 1512604800000
-        |      }
-        |    ]
-        |  },
-        |  "personalDetails": {
-        |    "forename": "John",
-        |    "surname": "Densmore",
-        |    "nino": "$nino",
-        |    "address": {
-        |      "addressLine1": "13 Front Street",
-        |      "addressLine2": "Gosforth",
-        |      "addressLine3": "Newcastle",
-        |      "postCode": "NE43 7AY"
-        |    },
-        |    "wtcPaymentFrequency": "WEEKLY",
-        |    "ctcPaymentFrequency": "WEEKLY",
-        |    "dayPhoneNumber": "0191 393 3993"
-        |  },
-        |  "children": {
-        |    "child": [
-        |      {
-        |        "firstNames": "Paul",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 1451606400000,
-        |        "hasFTNAE": false,
-        |        "hasConnexions": false,
-        |        "isActive": true
-        |      },
-        |      {
-        |        "firstNames": "Sasha",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 1451606400000,
-        |        "hasFTNAE": false,
-        |        "hasConnexions": false,
-        |        "isActive": true
-        |      },
-        |      {
-        |        "firstNames": "Eve",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 1451606400000,
-        |        "hasFTNAE": false,
-        |        "hasConnexions": false,
-        |        "isActive": true
-        |      },
-        |      {
-        |        "firstNames": "Claire",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 962319600000,
-        |        "hasFTNAE": true,
-        |        "hasConnexions": false,
-        |        "isActive": true
-        |      },
-        |      {
-        |        "firstNames": "Micheal",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 930697200000,
-        |        "hasFTNAE": true,
-        |        "hasConnexions": false,
-        |        "isActive": true
-        |      },
-        |      {
-        |        "firstNames": "Justine",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 1025391600000,
-        |        "hasFTNAE": false,
-        |        "hasConnexions": false,
-        |        "isActive": true
-        |      },
-        |      {
-        |        "firstNames": "Mathias",
-        |        "surname": "Cowling",
-        |        "dateOfBirth": 962319600000,
-        |        "hasFTNAE": true,
-        |        "hasConnexions": true,
-        |        "isActive": true
-        |      }
-        |    ]
-        |  }
-        |}
+        |{"showData":$showData}
       """.stripMargin
-    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-summary", response, journeyId)
+    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-decision", response)
   }
 
-  def taxCreditsDecisionSucceeds(nino: String, journeyId: String) : Unit = {
+  def taxCreditsSubmissionStateIsEnabled(): Unit = {
     val response =
-      """
-        |{"showData":true}
+      s"""
+        |{"submissionState": true}
       """.stripMargin
-    stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-decision", response, journeyId)
-  }
-
-  def taxCreditsSubmissionStateIsEnabled(journeyId: String) : Unit = {
-    val response =
-      """
-        |{"submissionState":false}
-      """.stripMargin
-    stubGetSuccess(s"/income/tax-credits/submission/state/enabled", response, journeyId)
-  }
-
-  def pushRegistrationSucceeds(journeyId: String) : Unit = {
-    stubPostSuccess(s"/push/registration", """{}""", journeyId)
-  }
-
-  private def stubGetSuccess(path: String, response: String, queryParam: String) : Unit = {
-    stubFor(get(urlEqualTo(s"$path$queryParam"))
-      .willReturn(aResponse()
-        .withStatus(200)
-        .withBody(response)))
-  }
-
-  private def stubPostSuccess(path: String, response: String, queryParam: String) : Unit = {
-    stubFor(post(urlEqualTo(s"$path$queryParam"))
-      .willReturn(aResponse()
-        .withStatus(200)
-        .withBody(response)))
+    stubGetSuccess("/income/tax-credits/submission/state/enabled", response)
   }
 
 }

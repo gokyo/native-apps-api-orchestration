@@ -25,7 +25,9 @@ API
 | Feedback ```/native-app/:nino/startup``` | POST | Initiate an async service to submit feedback. The cookie named mdtpapi will be returned from this service and must be supplied to the poll service.  [More...](docs/feedback.md) |
 | Feedback ```/native-app/:nino/poll``` | GET | Poll the status of the async feedback task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/feedback-poll.md) |
 | Get Message ```/native-app/:nino/startup?journeyId={id}``` | POST | Retrieve message associated with Id and update state to answer. [More...](docs/push-notification-get-message.md) |
-| Get Message ```/native-app/:nino/poll``` | GET | Poll the status of the async get message task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/push-notification-get-message.md) |
+| Get Message ```/native-app/:nino/poll``` | GET | Poll the status of the async get message task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/push-notification-get-message-poll.md) |
+| Respond To Message ```/native-app/:nino/startup?journeyId={id}``` | POST | Respond to a push message associated with Id and update state to answer. [More...](docs/push-notification-respond-to-message.md) |
+| Respond To  Message ```/native-app/:nino/poll``` | GET | Poll the status of the async respond to message task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/push-notification-respond-to-message-poll.md) |
 | Survey Widget ```/native-app/:nino/startup?journeyId={id}``` | POST | Persists widget survey data captured in the app. [More...](docs/survey-widget.md) |
 | Survey Widget ```/native-app/:nino/poll``` | GET | Poll the status of the async survey widget task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/survey-widget-poll.md) |
 | Audit ```/native-app/:nino/startup?journeyId={id}``` | POST | Retrieve message associated with Id and update state to answer. [More...](docs/audit-event.md) |

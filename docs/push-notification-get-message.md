@@ -33,12 +33,8 @@ push-notification get-message
 
 ```json
 {
-  "id":"msg-some-id",
-  "subject": "Weather",
-  "body": "Is it raining?",
-  "responses": {
-    "yes": "Yes",
-    "no": "No"
+  "status": {
+    "code": "poll"
   }
 }
 ```

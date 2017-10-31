@@ -29,6 +29,8 @@ case object ErrorNinoInvalid extends ErrorResponse(400, "NINO_INVALID", "The pro
 
 case object ErrorUnauthorizedNoNino extends ErrorResponse(401, "UNAUTHORIZED", "NINO does not exist on account")
 
+case object ErrorUnauthorizedUpstream extends ErrorResponse(401, "UNAUTHORIZED", "Upstream service such as auth returned 401")
+
 case object ErrorBadRequest extends ErrorResponse(400, "BAD_REQUEST", "Invalid POST request")
 
 case object MandatoryResponse extends ErrorResponse(500, "MANDATORY", "Mandatory data not found")
