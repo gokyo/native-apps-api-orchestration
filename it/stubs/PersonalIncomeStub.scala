@@ -584,10 +584,10 @@ object PersonalIncomeStub {
     stubGetSuccess(s"/income/$nino/tax-credits/tax-credits-decision", response)
   }
 
-  def taxCreditsSubmissionStateIsEnabled(isEnabled: Boolean = true): Unit = {
+  def taxCreditsSubmissionStateIsEnabled(): Unit = {
     val response =
       s"""
-        |{"submissionState": $isEnabled}
+        |{"submissionState": true}
       """.stripMargin
     stubGetSuccess("/income/tax-credits/submission/state/enabled", response)
   }

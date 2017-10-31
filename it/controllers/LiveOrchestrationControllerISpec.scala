@@ -302,7 +302,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
     }
 
     "return a http 200 status with a body status code 'poll' for an authenticated user, " +
-      "with poll asynchronously returning 401 when the poll request NINO does not match the NINO associated in the async response" in {
+      "with poll asynchronously returning 401 when the poll request NINO does not match the authority NINO" in {
       val nino = "CS700100A"
       val someOtherNino = "AB123456C"
       writeAuditSucceeds()
@@ -340,7 +340,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       authRecordExists(nino)
       taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
-      taxCreditsDecisionSucceeds(nino, false)
+      taxCreditsDecisionSucceeds(nino, showData = false)
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
       val postRequest = """{
