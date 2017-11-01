@@ -55,12 +55,12 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
     executionType.toUpperCase match {
       case POST =>
         val postData = data.getOrElse(throw new Exception("No Post Data Provided!"))
-        val result = connector.doPost(postData, host, path(journeyId, nino, data), port, hc)
+        val result = connector.doPost(postData, serviceName, path(journeyId, nino, data), hc)
         result.map { response =>
           Some(ExecutorResponse(executorName, Option(response), cacheTime, Some(false)))
         }
       case GET =>
-        connector.doGet(host, path(journeyId, nino, data), port, hc).map {
+        connector.doGet(serviceName, path(journeyId, nino, data), hc).map {
           response => {
             Some(ExecutorResponse(executorName, Option(response), cacheTime, Some(false)))
           }
@@ -290,7 +290,7 @@ case class ClaimantDetailsServiceExecutor() extends ServiceExecutor {
     val claimsPath = s"/income/$nino/tax-credits/claimant-details?claims=true$journeyParam"
 
     val claimantDetails = for (
-      references <- connector.doGet(host, claimsPath, port, hc);
+      references <- connector.doGet(serviceName, claimsPath, hc);
       tokens <- getTokens(nino, getBarcodes(references), journeyId);
       details <- getDetails(nino, references, tokens, journeyId)
     ) yield details
@@ -311,7 +311,7 @@ case class ClaimantDetailsServiceExecutor() extends ServiceExecutor {
     val tokens = Future.sequence(validBarcodes.map { code =>
 
         val path = s"/income/$nino/tax-credits/$code/auth$journeyParam"
-        val result = connector.doGet(host, path, port, hc)
+        val result = connector.doGet(serviceName, path, hc)
 
         result.map(token => (code, (token \ "tcrAuthToken").asOpt[String]))
           .filter(_._2.nonEmpty)
@@ -329,7 +329,7 @@ case class ClaimantDetailsServiceExecutor() extends ServiceExecutor {
 
     val renewalFormType = Future.sequence(tokens.map { case (code, auth) =>
       val path = s"/income/$nino/tax-credits/claimant-details$journeyParam"
-      val result = connector.doGet(host, path, port, hc.withExtraHeaders(("tcrAuthToken", auth)))
+      val result = connector.doGet(serviceName, path, hc.withExtraHeaders(("tcrAuthToken", auth)))
       result.map(details => (code, (details \ "renewalFormType").asOpt[String]))
     })
 

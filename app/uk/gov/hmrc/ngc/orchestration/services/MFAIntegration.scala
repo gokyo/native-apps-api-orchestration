@@ -92,8 +92,6 @@ case class AuthExchangeResponse(access_token: BearerToken,
 
 @Singleton
 class MFAIntegration @Inject()(genericConnector: GenericConnector,
-                               @Named("mfa.host") host: String,
-                               @Named("mfa.port") port: Int,
                                @Named("config") config: Configuration) {
 
   val scopes = config.getStringSeq("scopes").get
@@ -123,8 +121,7 @@ class MFAIntegration @Inject()(genericConnector: GenericConnector,
     val journeyRequest = JourneyRequest(accounts.credId, VALIDATE_URL, NGC_APPLICATION, accounts.affinityGroup, "api",
       Some(VALIDATE_URL), scopes)
 
-    genericConnector.doPost(Json.toJson(journeyRequest), host, "/multi-factor-authentication/authenticatedJourney",
-      port, hc)
+    genericConnector.doPost(Json.toJson(journeyRequest), "multi-factor-authentication", "/multi-factor-authentication/authenticatedJourney", hc)
       .map { response =>
         val mfaApi = response.asOpt[MfaURI].getOrElse(throw new IllegalArgumentException(s"Failed to build MfaURI $response! for $journeyId"))
         if (mfaApi.apiURI.isEmpty || mfaApi.webURI.isEmpty) throw new IllegalArgumentException(s"URLs found to be empty $response for $journeyId!")
@@ -163,7 +160,7 @@ class MFAIntegration @Inject()(genericConnector: GenericConnector,
   }
 
   def mfaAPI(path:String)(implicit hc:HeaderCarrier) = {
-    genericConnector.doGet(host, path, port, hc)
+    genericConnector.doGet("multi-factor-authentication", path, hc)
       .map { response =>
         response.asOpt[JourneyResponse].getOrElse(throw new IllegalArgumentException("Failed to build MfaURI"));
       }

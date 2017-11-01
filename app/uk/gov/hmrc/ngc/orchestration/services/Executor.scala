@@ -28,21 +28,12 @@ import scala.concurrent.{ExecutionContext, Future}
 trait Executor {
   val id: String
   val serviceName: String
-  lazy val host: String = getConfigProperty("host")
-  lazy val port: Int = getConfigProperty("port").toInt
 
   def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]]
 
   def logJourneyId(journeyId: Option[String]) = s"Native Error - ${journeyId.fold("no Journey id supplied")(id => id)}"
 
   def buildJourneyQueryParam(journeyId: Option[String]) = journeyId.fold("")(id => s"?journeyId=$id")
-
-  private def getServiceConfig: Configuration = {
-    Play.current.configuration.getConfig(s"microservice.services.$serviceName").getOrElse(throw new Exception(s"No micro services configured for $serviceName"))
-  }
-  private def getConfigProperty(property: String): String = {
-    getServiceConfig.getString(property).getOrElse(throw new Exception(s"No service configuration found for $serviceName"))
-  }
 }
 
 case class TaxSummary(connector: GenericConnector, journeyId: Option[String]) extends Executor with ResponseCode {
@@ -50,7 +41,7 @@ case class TaxSummary(connector: GenericConnector, journeyId: Option[String]) ex
   override val serviceName: String = "personal-income"
 
   override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
-    connector.doGet(host, s"/income/$nino/tax-summary/$year${buildJourneyQueryParam(journeyId)}" , port, hc).map(res => {
+    connector.doGet(serviceName, s"/income/$nino/tax-summary/$year${buildJourneyQueryParam(journeyId)}", hc).map(res => {
       Some(Result(id, res))
     }).recover {
       case ex: Exception =>
@@ -65,7 +56,7 @@ case class TaxCreditsSubmissionState(connector: GenericConnector, journeyId: Opt
   override val id = "state"
   override val serviceName = "personal-income"
   override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
-    connector.doGet(host, s"/income/tax-credits/submission/state/enabled${buildJourneyQueryParam(journeyId)}", port, hc).map(res =>
+    connector.doGet(serviceName, s"/income/tax-credits/submission/state/enabled${buildJourneyQueryParam(journeyId)}", hc).map(res =>
       Some(Result(id,
         JsObject(Seq("enableRenewals" -> JsBoolean(res.\("submissionState").as[Boolean])))
       )))
@@ -87,7 +78,7 @@ case class PushRegistration(connector: GenericConnector, inputRequest:JsValue, j
       Logger.info(s"${logJourneyId(journeyId)} - No token supplied!")
     } else {
       // Note: Fire and forget!
-      connector.doPost(inputRequest, host, s"/push/registration${buildJourneyQueryParam(journeyId)}", port, hc)
+      connector.doPost(inputRequest, serviceName, s"/push/registration${buildJourneyQueryParam(journeyId)}", hc)
     }
     Future.successful(None)
   }
@@ -102,7 +93,7 @@ case class TaxCreditSummary(connector: GenericConnector, journeyId: Option[Strin
     def taxCreditDecision(nino: String)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
       Logger.warn(s"decision: HC received is ${hc.authorization} for Journey Id $journeyId")
 
-      connector.doGet(host, s"/income/$nino/tax-credits/tax-credits-decision${buildJourneyQueryParam(journeyId)}", port, hc).map(res => {
+      connector.doGet(serviceName, s"/income/$nino/tax-credits/tax-credits-decision${buildJourneyQueryParam(journeyId)}", hc).map(res => {
         Some(Result("decision", res))
       }).recover {
         case ex: uk.gov.hmrc.http.NotFoundException =>
@@ -126,7 +117,7 @@ case class TaxCreditSummary(connector: GenericConnector, journeyId: Option[Strin
   }
 
   def getTaxCreditSummary(nino: String)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
-    connector.doGet(host, s"/income/$nino/tax-credits/tax-credits-summary${buildJourneyQueryParam(journeyId)}", port, hc).map(r => {
+    connector.doGet(serviceName, s"/income/$nino/tax-credits/tax-credits-summary${buildJourneyQueryParam(journeyId)}", hc).map(r => {
       Some(Result(id, r))
     }).recover {
 

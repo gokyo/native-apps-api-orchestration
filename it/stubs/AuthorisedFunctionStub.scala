@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, post, stubFor
 
 object AuthorisedFunctionStub {
 
-  def authorisedFunctionSucceeds(nino : String, confidenceLevel: Int, credentialStrength: String): Unit = {
+  def authorisedFunctionSucceeds(nino : String, confidenceLevel: Int = 200, credentialStrength: String = "strong"): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .willReturn(aResponse()
         .withStatus(200)
@@ -22,7 +22,7 @@ object AuthorisedFunctionStub {
           """.stripMargin)))
   }
 
-  def authorisedFunctionGrantAccessSucceeds(nino: String, confidenceLevel: Int, userDetailsUri: String) = {
+  def authorisedFunctionGrantAccessSucceeds(nino: String, confidenceLevel: Int = 200, userDetailsUri: String = "strong") = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .willReturn(aResponse()
         .withStatus(200)

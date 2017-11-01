@@ -19,7 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 import play.api.libs.json.Json
 import play.api.{Logger, mvc}
 import uk.gov.hmrc.api.controllers._
-import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException}
+import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException, Upstream4xxResponse}
 import uk.gov.hmrc.play.microservice.controller.BaseController
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -88,6 +88,10 @@ trait ErrorHandling {
       case ex: AccountWithWeakCredStrength =>
         Logger.info("Unauthorized! Account with weak cred strength!")
         Unauthorized(Json.toJson(ErrorUnauthorizedWeakCredStrength))
+
+      case ex: Upstream4xxResponse if ex.upstreamResponseCode == 401 ⇒
+        log("Upstream service returned 401")
+        Status(ErrorUnauthorizedUpstream.httpStatusCode)(Json.toJson(ErrorUnauthorizedUpstream))
 
       case e: Exception =>
         Logger.error(s"Native Error - $app Internal server error: ${e.getMessage}", e)

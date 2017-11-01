@@ -145,6 +145,7 @@ class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplicati
       status(result) shouldBe 400
     }
 
+    //TODO this broken when running as a suite, but works fine individually
     "should successfully execute if the number of services to execute is less than or equal to the max service config" in {
 
       val request: JsValue = Json.parse(findResource(s"/resources/generic/max-service-calls-exceeded-request.json").get)
@@ -169,6 +170,7 @@ class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplicati
       contentAsJson(result) shouldBe pollResponse
     }
 
+    //TODO this broken when running as a suite, but works fine individually
     "should successfully execute if the number of events to execute is less than or equal to the max event config" in {
 
       val request: JsValue = Json.parse(findResource(s"/resources/generic/max-event-calls-exceeded-request.json").get)
