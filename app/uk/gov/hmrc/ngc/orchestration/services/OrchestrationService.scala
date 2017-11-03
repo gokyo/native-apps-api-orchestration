@@ -20,7 +20,6 @@ import java.util.UUID
 
 import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
-import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.json._
 import uk.gov.hmrc.api.sandbox.FileResource
@@ -28,11 +27,10 @@ import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.ngc.orchestration.config.ConfiguredCampaigns
+import uk.gov.hmrc.ngc.orchestration.config.{ConfiguredCampaigns, NextGenAuditConnector}
 import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
-import uk.gov.hmrc.ngc.orchestration.services.live.{MFAAPIResponse, MFAIntegration, MFARequest}
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.time.TaxYear
 
@@ -55,21 +53,6 @@ object PreFlightRequest {
   implicit val formats = Json.format[PreFlightRequest]
 }
 
-case class JourneyRequest(userIdentifier: String, continueUrl: String, origin: String, affinityGroup: String, context: String, serviceUrl: Option[String], scopes: Seq[String])
-
-object JourneyRequest {
-  implicit val format = Json.format[JourneyRequest]
-}
-
-case class JourneyResponse(journeyId: String, userIdentifier: String, registrationId: Option[String], continueUrl: String, origin: String, affinityGroup: String, registrationSkippable: Boolean, factor: Option[String], factorUri: Option[String], status: String, createdAt: DateTime)
-
-object JourneyResponse {
-  implicit val format = Json.format[JourneyResponse]
-}
-
-case class ServiceState(state:String, func: Accounts => MFARequest => Option[String] => Future[MFAAPIResponse])
-
-
 trait OrchestrationService {
 
   def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = ???
@@ -81,7 +64,7 @@ trait OrchestrationService {
 
 @Singleton
 class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
-                                         genericConnector: GenericConnector,
+                                         override val genericConnector: GenericConnector,
                                          override val auditConnector: AuditConnector,
                                          override val authConnector: AuthConnector,
                                          @Named("confidenceLevel") override val confLevel: Int)
@@ -174,6 +157,9 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
 @Singleton
 class SandboxOrchestrationService extends OrchestrationService with FileResource with ExecutorFactory {
 
+  override val genericConnector: GenericConnector = new GenericConnector()
+  override val auditConnector = NextGenAuditConnector
+
   val cache: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
 
   val defaultUser = "404893573708"
@@ -233,4 +219,5 @@ class SandboxOrchestrationService extends OrchestrationService with FileResource
     val nino = Nino(ninoMapping.getOrElse(userId, defaultNino))
     PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(nino), None, routeToIV = false, routeToTwoFactor = false, UUID.randomUUID().toString, "credId-1234", "Individual"))
   }
+
 }

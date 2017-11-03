@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.ngc.orchestration.services.live
+package uk.gov.hmrc.ngc.orchestration.services
 
 import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}

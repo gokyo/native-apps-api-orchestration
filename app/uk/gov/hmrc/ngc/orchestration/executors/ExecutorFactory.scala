@@ -24,6 +24,7 @@ import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.AuditExtensions._
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.model.{Audit, DataEvent}
 
 import scala.collection.Seq
@@ -85,14 +86,17 @@ trait EventExecutor extends Executor[ExecutorResponse]
 
 trait ExecutorFactory {
 
-  val feedback = DeskProFeedbackExecutor()
-  val versionCheck = VersionCheckExecutor()
-  val pushNotificationGetMessageExecutor = PushNotificationGetMessageExecutor()
-  val pushNotificationRespondToMessageExecutor = PushNotificationRespondToMessageExecutor()
-  val nativeAppSurveyWidget = WidgetSurveyDataServiceExecutor()
-  val claimantDetailsServiceExecutor = ClaimantDetailsServiceExecutor()
+  val genericConnector: GenericConnector
+  val auditConnector: AuditConnector
 
-  val auditEventExecutor = AuditEventExecutor()
+  val feedback = DeskProFeedbackExecutor(genericConnector)
+  val versionCheck = VersionCheckExecutor(genericConnector)
+  val pushNotificationGetMessageExecutor = PushNotificationGetMessageExecutor(genericConnector)
+  val pushNotificationRespondToMessageExecutor = PushNotificationRespondToMessageExecutor(genericConnector)
+  val nativeAppSurveyWidget = WidgetSurveyDataServiceExecutor(genericConnector)
+  val claimantDetailsServiceExecutor = ClaimantDetailsServiceExecutor(genericConnector)
+
+  val auditEventExecutor = AuditEventExecutor(audit = new Audit("native-apps", auditConnector))
 
   val serviceExecutors: Map[String, ServiceExecutor] = Map(
     Seq(
@@ -142,7 +146,7 @@ trait ExecutorFactory {
 
 }
 
-case class VersionCheckExecutor() extends ServiceExecutor {
+case class VersionCheckExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
   override val executorName: String = "version-check"
 
   override val executionType: String = POST
@@ -150,12 +154,12 @@ case class VersionCheckExecutor() extends ServiceExecutor {
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]) = "/profile/native-app/version-check"
 
-  override def connector: GenericConnector = new GenericConnector
+  override def connector: GenericConnector = genericConnector
 
   override val cacheTime: Option[Long] = None
 }
 
-case class DeskProFeedbackExecutor() extends ServiceExecutor {
+case class DeskProFeedbackExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
   override val executorName: String = "deskpro-feedback"
 
   override val executionType: String = POST
@@ -165,10 +169,10 @@ case class DeskProFeedbackExecutor() extends ServiceExecutor {
 
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = new GenericConnector
+  override def connector = genericConnector
 }
 
-case class PushNotificationGetMessageExecutor() extends ServiceExecutor {
+case class PushNotificationGetMessageExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
   override val executorName: String = "push-notification-get-message"
 
   override val executionType: String = GET
@@ -182,10 +186,10 @@ case class PushNotificationGetMessageExecutor() extends ServiceExecutor {
 
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = new GenericConnector
+  override def connector = genericConnector
 }
 
-case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
+case class PushNotificationRespondToMessageExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
   override val executorName: String = "push-notification-respond-to-message"
 
   override val executionType: String = POST
@@ -199,7 +203,7 @@ case class PushNotificationRespondToMessageExecutor() extends ServiceExecutor {
 
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = new GenericConnector
+  override def connector = genericConnector
 }
 
 case class AuditEventExecutor(audit: Audit = new Audit("native-apps", NextGenAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
@@ -260,22 +264,22 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", NextGenAud
   }
 }
 
-case class WidgetSurveyDataServiceExecutor() extends ServiceExecutor {
+case class WidgetSurveyDataServiceExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
   override val serviceName: String = "native-app-widget"
   override val cacheTime: Option[Long] = None
   override val executionType: String = POST
   override val executorName: String = "survey-widget"
 
-  override def connector: GenericConnector = new GenericConnector
+  override def connector = genericConnector
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = s"/native-app-widget/${nino}/widget-data"
 }
 
-case class ClaimantDetailsServiceExecutor() extends ServiceExecutor {
+case class ClaimantDetailsServiceExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
   override val serviceName: String = "personal-income"
   override val cacheTime: Option[Long] = None
 
-  override def connector: GenericConnector = new GenericConnector
+  override def connector = genericConnector
 
   override val executorName: String = "claimant-details"
 
