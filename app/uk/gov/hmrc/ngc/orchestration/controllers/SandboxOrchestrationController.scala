@@ -36,7 +36,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 trait SandboxOrchestrationController extends NativeAppsOrchestrationController with SandboxPoll {
   override val actorName = "sandbox-async_native-apps-api-actor"
   override def id = "sandbox-async_native-apps-api-id"
-  override val service: SandboxOrchestrationService = ???
+  override val service: SandboxOrchestrationService
   override val app: String = "Sandbox-Orchestration-Controller"
   override lazy val repository:AsyncRepository = sandboxRepository
 
@@ -62,11 +62,14 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
 
   // Must override the startup call since live controller talks to a queue.
   override def orchestrate(nino: Nino, journeyId: Option[String] = None): Action[AnyContent] = validateAccept(acceptHeaderValidationRules).async {
-    implicit request =>
+    implicit request ⇒
       implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
       errorWrapper {
-        validate { validatedRequest =>
-          service.orchestrate(validatedRequest, nino, journeyId).map(resp => Ok(resp).withCookies(Cookie("mdtpapi", buildRequestsCookie(journeyId))))
+        validate { validatedRequest ⇒
+          service.orchestrate(validatedRequest, nino, journeyId).map(resp ⇒
+
+
+            Ok(resp).withCookies(Cookie("mdtpapi", buildRequestsCookie(journeyId))))
         }
       }
   }
@@ -92,5 +95,5 @@ class SandboxOrchestrationControllerImpl @Inject()(override val authConnector: A
                                                    @Named("eventMax") override val eventMax: Int,
                                                    @Named("confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
   val auditConnector: AuditConnector = NextGenAuditConnector
-  override val maxAgeForSuccess: Int = 3600
+  override val maxAgeForSuccess: Int = 14400
 }

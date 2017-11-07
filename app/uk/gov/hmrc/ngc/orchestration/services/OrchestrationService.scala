@@ -22,6 +22,7 @@ import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json._
+import uk.gov.hmrc.api.controllers.ErrorInternalServerError
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
@@ -29,8 +30,10 @@ import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.config.{ConfiguredCampaigns, NextGenAuditConnector}
 import uk.gov.hmrc.ngc.orchestration.connectors._
+import uk.gov.hmrc.ngc.orchestration.controllers.{ErrorUnauthorizedNoNino, NinoNotFoundOnAccount}
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
+import uk.gov.hmrc.ngc.orchestration.services
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.time.TaxYear
 
@@ -92,13 +95,14 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
   }
 
   override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
-    grantAccess(nino)
-    request match {
-      case OrchestrationServiceRequest(None, Some(request)) ⇒
-        buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
-      case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
-        startup(legacyRequest, nino, journeyId)
-    }
+    grantAccess(nino).map { _ ⇒
+      request match {
+        case OrchestrationServiceRequest(None, Some(request)) ⇒
+          buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
+        case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
+          startup(legacyRequest, nino, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
+      }
+    }.flatMap(response ⇒ response)
   }
 
   override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject]= {

@@ -22,18 +22,18 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.{Answer, OngoingStubbing}
-import org.scalatest.BeforeAndAfterAll
 import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import uk.gov.hmrc.api.sandbox.FileResource
+import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.authorise.Predicate
-import uk.gov.hmrc.auth.core.retrieve.{Retrieval, ~}
-import uk.gov.hmrc.auth.core.{AuthConnector, ConfidenceLevel}
+import uk.gov.hmrc.auth.core.retrieve.{GGCredId, LegacyCredentials, Retrieval, ~}
+import uk.gov.hmrc.auth.core.{AffinityGroup, AuthConnector, ConfidenceLevel}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.TestData
-import uk.gov.hmrc.ngc.orchestration.domain.{ExecutorRequest, ExecutorResponse, OrchestrationRequest, OrchestrationResponse}
+import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.model.DataEvent
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
@@ -41,7 +41,7 @@ import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
-class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication with MockitoSugar with FileResource with BeforeAndAfterAll {
+class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication with MockitoSugar with FileResource {
 
 
   trait mocks {
@@ -76,7 +76,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
   def claimantDetailsClaims(nino: String): String = s"/income/$nino/tax-credits/claimant-details?claims=true&journeyId=$randomUUID"
   def claimantDetails(nino: String): String = s"/income/$nino/tax-credits/claimant-details$journeyId"
 
-  def stubHostAndPortGenericConnector(implicit genericConnector: GenericConnector): OngoingStubbing[Int] = {
+  def stubHostAndPortGenericConnector()(implicit genericConnector: GenericConnector): OngoingStubbing[Int] = {
     when(genericConnector.host(ArgumentMatchers.anyString())).thenReturn(host)
     when(genericConnector.port(ArgumentMatchers.anyString())).thenReturn(port)
   }
@@ -141,19 +141,35 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       .thenReturn(Future.successful(response))
   }
 
+  type GetAccounts =  ~[~[~[~[~[Option[String], Option[String]], Option[AffinityGroup]], LegacyCredentials], Option[String]], ConfidenceLevel]
+  def stubAuthorisationGetAccounts(response: GetAccounts)(implicit authConnector: AuthConnector) = {
+    when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GetAccounts]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+      .thenReturn(Future.successful(response))
+  }
+
+  def stubAuthorisationGetAccountsFailure(status: Int)(implicit authConnector: AuthConnector) = {
+    when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GetAccounts]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+      .thenReturn(Future.failed(Upstream4xxResponse("", 400, 400)))
+  }
+
 
   "LiveOrchestrationService.preFlight" should {
-    "test something" in new mocks {
 
-//      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, "localhost", Integer.randomInt)
+    "return the response with default value when version-check fails" in new mocks {
 
+      val getAccountsResponse: GetAccounts = new ~(new ~(new ~(new ~(new ~(Some(nino), None), Some(Individual)), GGCredId("some-cred-id")), Some("strong")), ConfidenceLevel.L200)
+      stubAuthorisationGetAccounts(getAccountsResponse)
+      stubPOSTGenericConnectorFailure(s"$versionCheck$journeyId", 500)
+      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
+      val response = await(liveOrchestrationService.preFlightCheck(PreFlightRequest(os = "ios or android", version = "n.n.n", None ), Some(randomUUID)))
+      response.upgradeRequired shouldBe false
     }
   }
 
   "LiveOrchestrationService.startup" should {
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
       "'/income/$nino/tax-credits/tax-credits-decision' endpoint throws 400 exception" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 400)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
@@ -180,7 +196,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
       "'/income/$nino/tax-credits/tax-credits-decision' endpoint throws 404 exception" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
@@ -207,7 +223,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
       "'/income/$nino/tax-credits/tax-credits-decision' endpoint throws 401 exception" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
@@ -234,7 +250,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "return taxCreditSummary attribute when service call to " +
       "'/income/tax-credits/submission/state/enabled' endpoint returns a non 200 response" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), TestData.testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
@@ -251,7 +267,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "response data is not effected by a failure to execute push-registration service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), TestData.testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
@@ -270,7 +286,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return empty taxSummary attribute when '/income/$nino/tax-summary/$year' service endpoint returns non 200 response " +
       "and an empty taxCreditSummary and no related Campaigns when '/income/$nino/tax-credits/tax-credits-summary' " +
       "service endpoint returns non 200 response" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorFailure(taxSummary(nino, 2017), 400)
       stubGETGenericConnectorResponse(taxCreditDecision(nino), TestData.testTaxCreditDecision)
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
@@ -287,7 +303,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "return taxCreditSummary empty JSON when the tax-credit-summary service returns a non 200 response + not invoke PushReg when payload is empty" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorFailure(taxSummary(nino, 2017), 400)
       stubGETGenericConnectorResponse(taxCreditDecision(nino), TestData.testTaxCreditDecision)
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
@@ -308,7 +324,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
   "LiveOrchestrationService.orchestrate" should {
     "returns a success response from 'deskpro-feedback' generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse("/deskpro/feedback", Json.obj("ticket_id" → 1980683879))
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
@@ -320,7 +336,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns a failure response from deskpro-feedback generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorFailure("/deskpro/feedback", 500)
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
@@ -332,7 +348,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns multiple failure responses from deskpro-feedback generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorFailure("/deskpro/feedback", 500)
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val feedbackRequest_1 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_1" → "Some feedback data A")))
@@ -349,7 +365,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response1: JsObject = Json.obj("ticket_id" → 111111111)
       val response2: JsObject = Json.obj("ticket_id" → 222222222)
       val response3: JsObject = Json.obj("ticket_id" → 333333333)
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorSuccessAndFailureResponse("/deskpro/feedback", 3, 500, response1, response2, response3)
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val feedbackRequest_1 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_1" → "Some feedback data A")))
@@ -365,7 +381,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns response of failure with a timeout flag set when a GatewayTimeoutException occurs executing the generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorFailure("/deskpro/feedback", 504)
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
@@ -377,7 +393,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns a success response from push-notification-get-message generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(pushNotificationGetMessage, Json.parse("""{"id":"msg-some-id","subject":"Weather","body":"Is it raining?","responses":{"yes":"Yes","no":"No"}}"""))
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val pushNotificationGetMessageRequest = ExecutorRequest(name = "push-notification-get-message", data = Some(Json.obj("messageId" → pushNotificationMessageId)))
@@ -389,7 +405,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns a success response from push-notification-respond-to-message generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(pushNotificationResponseToMessage, Json.obj())
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val pushNotificationGetMessageRequest = ExecutorRequest(name = "push-notification-respond-to-message", data = Some(Json.obj("messageId" → pushNotificationMessageId)))
@@ -402,7 +418,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "return success response from claimant-details service" in new mocks {
       val responseJson: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
       stubGETGenericConnectorResponse(taxCreditsBarCode, Json.parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}"""))
       stubGETGenericConnectorResponse(claimantDetails(nino), (responseJson \\ "secondCall").head)
@@ -418,7 +434,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return success response from claimant-details service showing the data from the first call " +
       "given a problem with the tcrAuthToken and the second call could not be made" in new mocks {
       val responseJson: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
       stubGETGenericConnectorFailure(taxCreditsBarCode, 500)
       stubGETGenericConnectorResponse(claimantDetails(nino), (responseJson \\ "secondCall").head)
@@ -435,7 +451,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return success response from claimant-details service showing the data from the first call " +
       "given a problem with the second call to claimant-details" in new mocks {
       val responseJson: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
       stubGETGenericConnectorResponse(taxCreditsBarCode, Json.parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}"""))
       stubGETGenericConnectorFailure(claimantDetails(nino), 500)
@@ -450,7 +466,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns a success response from version-check generic service" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(versionCheck, Json.obj("upgrade" → false))
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val versionRequest = ExecutorRequest(name = "version-check", data = Some(Json.obj("os" → "ios or android", "version" → "n.n.n")))
@@ -462,7 +478,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "returns a success response from audit event request generic executor" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val auditEventRequest = ExecutorRequest(name = "ngc-audit-event",
         data = Some(Json.obj("nino" → nino,
@@ -478,7 +494,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "successfully execute a mixture of service and event requests" in new mocks {
-      stubHostAndPortGenericConnector
+      stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(deskproFeedback, Json.obj("ticket_id" → 1980683879))
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L200), Some("creds")))
       val auditEventRequest = ExecutorRequest(name = "ngc-audit-event",

@@ -1359,8 +1359,8 @@ object TestData {
       |    {
       |      "campaignId": "HELP_TO_SAVE_1",
       |      "enabled": true,
-      |      "minimumViews": 4,
-      |      "dismissDays": 43,
+      |      "minimumViews": 3,
+      |      "dismissDays": 30,
       |      "requiredData": "workingTaxCredit"
       |    }
       |  ],
