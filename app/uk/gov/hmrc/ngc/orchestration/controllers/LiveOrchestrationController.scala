@@ -291,7 +291,7 @@ class LiveOrchestrationController extends NativeAppsOrchestrationController with
 
 @Singleton
 class SandboxOrchestrationControllerImpl extends SandboxOrchestrationController {
-  val auditConnector: AuditConnector = MicroserviceAuditConnector
+  lazy val auditConnector: AuditConnector = MicroserviceAuditConnector
   val maxAgeForSuccess: Long = 3600
 }
 
@@ -299,10 +299,10 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
   override val actorName = "sandbox-async_native-apps-api-actor"
   override def id = "sandbox-async_native-apps-api-id"
 
-  override val service: OrchestrationService = SandboxOrchestrationService
-  override val accessControl = AccountAccessControlWithHeaderCheck
-  override val accessControlOff = AccountAccessControlCheckOff
-  override val app: String = "Sandbox-Orchestration-Controller"
+  override lazy val service: OrchestrationService = SandboxOrchestrationService
+  override lazy val accessControl = AccountAccessControlWithHeaderCheck
+  override lazy val accessControlOff = AccountAccessControlCheckOff
+  override lazy val app: String = "Sandbox-Orchestration-Controller"
   override lazy val repository:AsyncRepository = sandboxRepository
   override def checkSecurity: Boolean = false
 

@@ -659,8 +659,8 @@ trait SandboxSuccess extends Setup {
     val testSessionId="SandboxSuccess"
     override val actorName = s"async_native-apps-api-actor_"+testSessionId
     override def id = "async_native-apps-api-id"
-    override val app = "Sandbox Native Apps Orchestration"
-    override val accessControl = AccountAccessControlCheckOff
+    override lazy val app = "Sandbox Native Apps Orchestration"
+    override lazy val accessControl = AccountAccessControlCheckOff
     override lazy val repository: AsyncRepository = asyncRepository
     override def checkSecurity: Boolean = false
     override val auditConnector: AuditConnector = MicroserviceAuditConnector
