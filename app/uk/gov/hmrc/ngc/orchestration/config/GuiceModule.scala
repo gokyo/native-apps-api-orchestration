@@ -19,6 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.config
 import com.google.inject.AbstractModule
 import play.api.Mode.Mode
 import play.api.{Configuration, Environment}
+import uk.gov.hmrc.ngc.orchestration.controllers.{SandboxOrchestrationController, SandboxOrchestrationControllerImpl}
 import uk.gov.hmrc.play.config.ServicesConfig
 
 class GuiceModule(environment: Environment, configuration: Configuration) extends AbstractModule with ServicesConfig {
@@ -26,5 +27,7 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
   override protected lazy val mode: Mode = environment.mode
   override protected lazy val runModeConfiguration: Configuration = configuration
 
-  override def configure() = {}
+  override def configure() = {
+    bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
+  }
 }
