@@ -21,7 +21,7 @@ import com.google.inject.name.Names
 import play.api.Mode.Mode
 import play.api.{Configuration, Environment}
 import uk.gov.hmrc.auth.core.AuthConnector
-import uk.gov.hmrc.ngc.orchestration.controllers.{LiveOrchestrationController, SandboxOrchestrationController, SandboxOrchestrationControllerImpl}
+import uk.gov.hmrc.ngc.orchestration.controllers.{SandboxOrchestrationController, SandboxOrchestrationControllerImpl}
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.config.ServicesConfig
 
