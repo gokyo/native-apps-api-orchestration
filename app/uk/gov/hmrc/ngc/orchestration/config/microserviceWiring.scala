@@ -43,7 +43,7 @@ object MicroserviceAuthConnector extends AuthConnector with ServicesConfig with 
 
 @Singleton
 class ConcreteAuthConnector extends PlayAuthConnector with ServicesConfig {
-  override val serviceUrl = baseUrl("auth")
+  override lazy val serviceUrl = baseUrl("auth")
   override def http = WSHttp
 }
 
