@@ -107,7 +107,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val versionBody = Json.parse("""{"os":"android", "version":"1.0.1"}""")
       val versionRequest = FakeRequest().withBody(versionBody).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json")
 
-      val controller = new LiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, 10, 10, 200, 30000)
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, 10, 10, 200, 30000, "PreflightHappyPath")
       val result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))(Duration(10,TimeUnit.SECONDS))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe Json.toJson(expectation)
@@ -138,7 +138,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     "return unauthorized when authority record does not contain a NINO" in new mocks {
       stubAuthorisationGrantAccess(new ~(new ~(Some(""), ConfidenceLevel.L50), Some("creds")))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
-      val controller = new LiveOrchestrationController(mockAuthConnector, liveOrchestrationService, 10, 10, 200, 30000)
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, 10, 10, 200, 30000, "UnauthorisedNoNino")
       val response = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
       jsonBodyOf(response) shouldBe TestData.pollResponse
@@ -148,17 +148,17 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
           HeaderNames.ACCEPT → "application/vnd.hmrc.1.0+json",
           HeaderNames.AUTHORIZATION → "Bearer 11111111",
           HeaderNames.COOKIE → response.header.headers.get("Set-Cookie").get)
-      Eventually.eventually {
-        val pollResponse = await(controller.poll(Nino(nino), Some(journeyId))(pollRequestWithCookieHeader))(Duration(10, TimeUnit.SECONDS))
-        status(pollResponse) shouldBe 401
-        Json.stringify(jsonBodyOf(pollResponse)) shouldBe """{"code":"UNAUTHORIZED","message":"NINO does not exist on account"}"""
+      val pollResponse = Eventually.eventually {
+        await(controller.poll(Nino(nino), Some(journeyId))(pollRequestWithCookieHeader))(Duration(10, TimeUnit.SECONDS))
       }
+      status(pollResponse) shouldBe 401
+      Json.stringify(jsonBodyOf(pollResponse)) shouldBe """{"code":"UNAUTHORIZED","message":"NINO does not exist on account"}"""
     }
 
     "return 401 result with json status detailing low CL on authority" in new mocks {
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L50), Some("creds")))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
-      val controller = new LiveOrchestrationController(mockAuthConnector, liveOrchestrationService, 10, 10, 200, 30000)
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, 10, 10, 200, 30000, "TestingLowCL")
       val response = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
       jsonBodyOf(response) shouldBe TestData.pollResponse
@@ -168,15 +168,15 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
                       HeaderNames.ACCEPT → "application/vnd.hmrc.1.0+json",
                       HeaderNames.AUTHORIZATION → "Bearer 11111111",
                       HeaderNames.COOKIE → response.header.headers.get("Set-Cookie").get)
-      Eventually.eventually {
-        val pollResponse = await(controller.poll(Nino(nino), Some(journeyId))(pollRequestWithCookieHeader))(Duration(10, TimeUnit.SECONDS))
-        status(pollResponse) shouldBe 401
-        Json.stringify(jsonBodyOf(pollResponse)) shouldBe """{"code":"LOW_CONFIDENCE_LEVEL","message":"Confidence Level on account does not allow access"}"""
+      val pollResponse = Eventually.eventually {
+        await(controller.poll(Nino(nino), Some(journeyId))(pollRequestWithCookieHeader))(Duration(10, TimeUnit.SECONDS))
       }
+      status(pollResponse) shouldBe 401
+      Json.stringify(jsonBodyOf(pollResponse)) shouldBe """{"code":"LOW_CONFIDENCE_LEVEL","message":"Confidence Level on account does not allow access"}"""
     }
 
     "return status code 406 when the headers are invalid" in new mocks {
-      val controller = new LiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, 10, 10, 200, 30000)
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, 10, 10, 200, 30000, "InvalidHeaders")
       val response = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithoutHeaders))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 406
       Json.stringify(jsonBodyOf(response)) shouldBe """{"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"}"""
