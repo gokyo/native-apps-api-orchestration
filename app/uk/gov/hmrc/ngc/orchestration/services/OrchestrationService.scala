@@ -100,7 +100,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
         case OrchestrationServiceRequest(None, Some(request)) ⇒
           buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
         case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
-          startup(legacyRequest, nino, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
+          startup(legacyRequest, nino, journeyId)
       }
     }.flatMap(response ⇒ response)
   }

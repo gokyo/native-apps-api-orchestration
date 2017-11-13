@@ -34,8 +34,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       "widget.help_to_save.enabled" → true,
       "widget.help_to_save.min_views" → 5,
       "widget.help_to_save.dismiss_days" → 15,
-      "widget.help_to_save.required_data" → "workingTaxCredit",
-      "metrics.enabled" → false
+      "widget.help_to_save.required_data" → "workingTaxCredit"
     )
 
   def withJourneyParam(journeyId: String) = s"journeyId=$journeyId"
@@ -267,10 +266,10 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
         await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
       }
       pollResponse.status shouldBe 200
-      (pollResponse.json \\ "taxSummary").head shouldBe Json.parse(taxSummaryJson(nino))
-      (pollResponse.json \\ "taxCreditSummary").head shouldBe Json.parse(taxCreditSummaryJson)
-      Json.stringify(((pollResponse.json \\ "state").head \\ "enableRenewals").head) shouldBe "true"
-      (pollResponse.json \\ "campaigns").head shouldBe Json.parse(
+      (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
+      (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.parse(taxCreditSummaryJson)
+      (pollResponse.json \ "state" \ "enableRenewals").as[Boolean] shouldBe true
+      (pollResponse.json \ "campaigns").as[JsArray] shouldBe Json.parse(
         """[{"campaignId": "HELP_TO_SAVE_1", "enabled": true, "minimumViews": 5, "dismissDays": 15, "requiredData": "workingTaxCredit"}]"""
       )
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
@@ -371,9 +370,9 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
         await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
       }
       pollResponse.status shouldBe 200
-      (pollResponse.json \\ "taxSummary").head shouldBe Json.parse(taxSummaryJson(nino))
-      (pollResponse.json \\ "taxCreditSummary").head shouldBe Json.obj()
-      Json.stringify(((pollResponse.json \\ "state").head \\ "enableRenewals").head) shouldBe "true"
+      (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
+      (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.obj()
+      (pollResponse.json \ "state"\ "enableRenewals").as[Boolean] shouldBe true
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
     }
   }

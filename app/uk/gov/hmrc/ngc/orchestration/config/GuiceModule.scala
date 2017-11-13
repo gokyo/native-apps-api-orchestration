@@ -33,7 +33,9 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
   override def configure() = {
 
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
+
     bind(classOf[AuthConnector]).to(classOf[ConcreteAuthConnector])
+
     bind(classOf[AuditConnector]).toInstance(NextGenAuditConnector)
 
     bindConstant().annotatedWith(Names.named("serviceMax"))
