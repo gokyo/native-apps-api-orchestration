@@ -21,12 +21,13 @@ import javax.inject.{Named, Singleton}
 import com.google.inject.Inject
 import play.api.Logger
 import play.api.http.HeaderNames
-import play.api.libs.json.{JsError, JsSuccess, JsValue, Json}
+import play.api.libs.json.{JsSuccess, JsValue, Json}
 import play.api.mvc._
 import uk.gov.hmrc.api.controllers.HeaderValidator
 import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.repository.AsyncRepository
 import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.live.GenericServiceCheck
@@ -46,23 +47,22 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
   val serviceMax: Int
   val eventMax: Int
   val maxAgeForSuccess: Int
-  val parsingFailure = Future.successful(BadRequest("Failed to parse request!"))
-  val authenticationFailure = Future.failed(new Exception("Failed to resolve authentication from HC!"))
+  val parsingFailure: Future[Result] = Future.successful(BadRequest("Failed to parse request!"))
+  val authenticationFailure: Future[Nothing] = Future.failed(new Exception("Failed to resolve authentication from HC!"))
 
   def preFlightCheck(journeyId:Option[String]): Action[JsValue] = validateAccept(acceptHeaderValidationRules).async(BodyParsers.parse.json) {
     implicit request ⇒ {
       errorWrapper {
-        implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
+        implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
         implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
         request.body.validate[PreFlightRequest] match {
-          case JsSuccess(preFlightRequest, _) ⇒ {
+          case JsSuccess(preFlightRequest, _) ⇒
             hc.authorization match {
               case Some(auth) ⇒ service.preFlightCheck(preFlightRequest, journeyId).map { response ⇒
                 Ok(Json.toJson(response)).withSession(authToken -> auth.value)
               }
               case _ ⇒ authenticationFailure
             }
-          }
           case _ ⇒ parsingFailure
         }
       }
@@ -72,7 +72,7 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
   def orchestrate(reqNino: Nino, journeyId: Option[String] = None): Action[AnyContent] = validateAccept(acceptHeaderValidationRules).async {
     implicit request ⇒ {
       errorWrapper {
-        implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
+        implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
         implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
         validate { valid ⇒
           // Do not allow more than one task to be executing - if task is running then poll status will be returned.
@@ -93,11 +93,11 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
   /**
    * Invoke the library poll function to determine the response to the client.
    */
-  def poll(nino: Nino, journeyId: Option[String] = None) = validateAccept(acceptHeaderValidationRules).async {
+  def poll(nino: Nino, journeyId: Option[String] = None): Action[AnyContent] = validateAccept(acceptHeaderValidationRules).async {
     implicit request ⇒
       withAudit("poll", Map("nino" → nino.value)) {
         errorWrapper {
-          implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
+          implicit val hc: HeaderCarrier = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
           implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
           grantAccess(nino).map { auth ⇒
             implicit val authority: Option[Authority] = Some(auth)

@@ -16,16 +16,35 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
-import akka.actor.{ActorRef, Props}
+import akka.actor.{ActorRef, ActorSystem, Props}
+import play.api.Logger
 import play.api.libs.concurrent.Akka
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContent, Call, Controller, Request}
 import uk.gov.hmrc.play.asyncmvc.async.{AsyncMVC, AsyncPaths}
 import play.api.Play.current
+import play.api.inject.ApplicationLifecycle
 
+import scala.concurrent.Future
+
+/**
+  * All subclasses must be @Singletons because this trait registers a shutdown hook
+  * https://www.playframework.com/documentation/2.5.x/ScalaDependencyInjection#stopping-cleaning-up
+  */
 trait AsyncMvcIntegration extends AsyncMVC[AsyncResponse] {
 
   self:Controller =>
+
+  // TODO it would be better to inject these
+  private def actorSystem: ActorSystem = Akka.system
+  private def lifecycle: ApplicationLifecycle = current.injector.instanceOf[ApplicationLifecycle]
+
+  lifecycle.addStopHook { () =>
+    Future.successful {
+      Logger.debug(s"Stopping actor $actorName")
+      actorSystem.stop(actorRef)
+    }
+  }
 
   val actorName = "async_native-apps-api-actor"
   override def id = "async_native-apps-api-id"
@@ -52,7 +71,7 @@ trait AsyncMvcIntegration extends AsyncMVC[AsyncResponse] {
 
   final val CLIENT_TIMEOUT=115000L
 
-  lazy val asyncActor: ActorRef = Akka.system.actorOf(Props(new AsyncMVCAsyncActor(taskCache, CLIENT_TIMEOUT)), actorName)
+  lazy val asyncActor: ActorRef = actorSystem.actorOf(Props(new AsyncMVCAsyncActor(taskCache, CLIENT_TIMEOUT)), actorName)
   override def         actorRef = asyncActor
   override def getClientTimeout = CLIENT_TIMEOUT
 

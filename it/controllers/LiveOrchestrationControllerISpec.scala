@@ -1,5 +1,6 @@
 package controllers
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import org.scalatest.concurrent.Eventually._
@@ -24,10 +25,9 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
   private val headerThatSucceeds = Seq(HeaderNames.CONTENT_TYPE  → MimeTypes.JSON,
                                        HeaderNames.ACCEPT        → "application/vnd.hmrc.1.0+json",
                                        HeaderNames.AUTHORIZATION → "Bearer 11111111")
-  private val headerWithoutAuthorization = headerThatSucceeds.filter{ case (name: String, _) ⇒ name != HeaderNames.AUTHORIZATION }
 
   private val journeyId = "f7a5d556-9f34-47cb-9d84-7e904f2fe704"
-  private val currentYear = TaxYear.current.currentYear toString
+  private val currentYear = TaxYear.current.currentYear.toString
 
   override protected def appBuilder: GuiceApplicationBuilder =
     super.appBuilder.configure(
@@ -38,16 +38,18 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
     )
 
   def withJourneyParam(journeyId: String) = s"journeyId=$journeyId"
-  def withCookieHeader(response: HttpResponse) = {
-    Seq(HeaderNames.COOKIE → response.allHeaders.get("Set-Cookie").getOrElse(throw new Exception("NO COOKIE FOUND")).head)
+  def withCookieHeader(response: HttpResponse): Seq[(String, String)] = {
+    Seq(HeaderNames.COOKIE → response.allHeaders.getOrElse("Set-Cookie", throw new Exception("NO COOKIE FOUND")).head)
   }
+
+  def gimmeUniqueToken: String = UUID.randomUUID().toString
 
   "POST of /native-app/preflight-check" should {
     "succeed for an authenticated user with 'confidence level' of 200 and 'strong' cred strength" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authorisedFunctionSucceeds(nino, 200, "strong")
+      authorisedFunctionSucceeds(nino)
       versionCheckSucceeds(upgrade = true)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -62,7 +64,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authorisedFunctionSucceeds(nino, 200, "strong")
+      authorisedFunctionSucceeds(nino)
       versionCheckSucceeds(upgrade = false)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -77,7 +79,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authorisedFunctionSucceeds(nino, 200, "strong")
+      authorisedFunctionSucceeds(nino)
       versionCheckUpgradeRequiredFails(400)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -92,7 +94,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authorisedFunctionSucceeds(nino, 200, "strong")
+      authorisedFunctionSucceeds(nino)
       versionCheckUpgradeRequiredFails(500)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -247,14 +249,14 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
       authorisedFunctionGrantAccessSucceeds(nino)
-      val postRequest = """{
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "$gimmeUniqueToken"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -286,14 +288,14 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
       authorisedFunctionGrantAccessSucceeds(nino)
-      val postRequest = """{
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "$gimmeUniqueToken"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -319,14 +321,14 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
       authorisedFunctionGrantAccessSucceeds(nino)
-      val postRequest = """{
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "$gimmeUniqueToken"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -351,14 +353,14 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
       authorisedFunctionGrantAccessSucceeds(nino)
-      val postRequest = """{
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "$gimmeUniqueToken"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
