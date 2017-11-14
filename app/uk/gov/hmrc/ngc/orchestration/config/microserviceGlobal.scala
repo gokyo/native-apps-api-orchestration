@@ -22,7 +22,10 @@ import play.api.libs.json.Json
 import play.api.mvc.Results._
 import play.api.mvc._
 import play.api.{Application, Configuration, Play}
+import uk.gov.hmrc.api.config.{ServiceLocatorConfig, ServiceLocatorRegistration}
+import uk.gov.hmrc.api.connector.ServiceLocatorConnector
 import uk.gov.hmrc.api.controllers._
+import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.config.CookieSessionFilter
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
@@ -53,7 +56,7 @@ object MicroserviceLoggingFilter extends LoggingFilter with MicroserviceFilterSu
   override def controllerNeedsLogging(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsLogging
 }
 
-object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode {
+object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with ServiceLocatorConfig with ServiceLocatorRegistration {
 
   override val auditConnector: AuditConnector = NextGenAuditConnector
 
@@ -66,6 +69,12 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode {
   override val authFilter: Option[EssentialFilter] = None
 
   private lazy val sessionFilter = CookieSessionFilter.SessionCookieFilter
+
+  override val slConnector: ServiceLocatorConnector = ServiceLocatorConnector(WSHttp)
+
+  override implicit val hc: HeaderCarrier = HeaderCarrier()
+
+  override def microserviceFilters: Seq[EssentialFilter] = Seq.empty
 
   override def doFilter(a: EssentialAction): EssentialAction = {
     // Note: Add the session filter to the controller in order for session cookie handling.
