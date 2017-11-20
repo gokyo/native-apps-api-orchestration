@@ -34,17 +34,18 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalamock.scalatest.MockFactory
+import org.scalatest.mockito.MockitoSugar
 import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.AuthProvider.GovernmentGateway
-import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.auth.core.{AuthConnector, _}
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.retrieve.{Retrieval, _}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.controllers.{AccountWithLowCL, FailToMatchTaxIdOnAuth, NinoNotFoundOnAccount}
-import uk.gov.hmrc.ngc.orchestration.services.Authorisation
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -80,14 +81,24 @@ class AuthorisationSpec extends UnitSpec with MockFactory {
                           authProviderId: LegacyCredentials,credStrength: Option[String],
                           confLevel: ConfidenceLevel) = {
     (authConnector.authorise(_: Predicate, _: AccountsRetrieval)(_: HeaderCarrier, _: ExecutionContext))
-      .expects(Individual and AuthProviders(GovernmentGateway), accountsRetrievals, *, *)
+      .expects(*, accountsRetrievals, *, *)
       .returning(Future.successful(new ~(new ~(new ~(new ~(new ~(nino, saUtr), affinityGroup), authProviderId), credStrength), confLevel)))
   }
 
-  def mockAuthGrantAccess(nino: Option[String], confLevel: ConfidenceLevel, userDetailsUri: Option[String]) = {
+  def mockAuthorisationThrowsUnsupportedAffinityGroup(authConnector: AuthConnector) = {
+    Mockito.when(authConnector.authorise(ArgumentMatchers.any[Predicate](),ArgumentMatchers.any[AccountsRetrieval]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+      .thenReturn(Future.failed(AuthorisationException.fromString("UnsupportedAffinityGroup")))
+  }
+
+  def mockAuthorisationThrowsUnsupportedAuthProvider(authConnector: AuthConnector) = {
+    Mockito.when(authConnector.authorise(ArgumentMatchers.any[Predicate](),ArgumentMatchers.any[AccountsRetrieval]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+      .thenReturn(Future.failed(AuthorisationException.fromString("UnsupportedAuthProvider")))
+  }
+
+  def mockAuthGrantAccess(nino: Option[String], confLevel: ConfidenceLevel, userDetailsUri: Option[String], returnNino: Option[String] = None) = {
     (mockAuthConnector.authorise(_: Predicate, _: GrantAccessRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", nino.getOrElse(""))), "Activated", None) and CredentialStrength(CredentialStrength.strong), grantAccessRetrievals, *, *)
-      .returning(Future.successful(new ~(new ~(nino, confLevel), userDetailsUri)))
+      .returning(Future.successful(new ~(new ~(returnNino, confLevel), userDetailsUri)))
   }
 
   "Authorisation getAccounts" should {
@@ -139,22 +150,32 @@ class AuthorisationSpec extends UnitSpec with MockFactory {
       accounts.journeyId shouldBe journeyId
     }
 
+    "ignore the supplied journeyId when blank" in {
+      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      val emptyJourneyId = ""
+      val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(emptyJourneyId)))
+      accounts.credId shouldBe "some-cred-id"
+      accounts.affinityGroup shouldBe "Individual"
+      accounts.routeToIV shouldBe false
+      accounts.routeToTwoFactor shouldBe false
+      accounts.nino.get.nino shouldBe testNino
+      accounts.saUtr.get.value shouldBe testSaUtr
+      accounts.journeyId should not be emptyJourneyId
+      accounts.journeyId.length should not equal 0
+    }
 
-    //TODO fix tests to test for Predicate failure with correct exception handling.
-
-//    "should fail when there is no affinity group on the account" in {
-//      mockAuthGetAccounts(Option(testNino), Option(testSaUtr), Some(Organisation), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
-//      intercept[UnsupportedAffinityGroup] {
-//        await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
-//      }
-//    }
-//
-//    "should fail when there is no GG cred id on the account" in {
-//      mockAuthGetAccounts(Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), VerifyPid("some-other-id"), Some("weak"), ConfidenceLevel.L200)
-//      intercept[UnsupportedAuthProvider] {
-//        await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
-//      }
-//    }
+    "generates new journeyId when no journeyId supplied" in {
+      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      val accounts = await(authorisation(mockAuthConnector).getAccounts(None))
+      accounts.credId shouldBe "some-cred-id"
+      accounts.affinityGroup shouldBe "Individual"
+      accounts.routeToIV shouldBe false
+      accounts.routeToTwoFactor shouldBe false
+      accounts.nino.get.nino shouldBe testNino
+      accounts.saUtr.get.value shouldBe testSaUtr
+      accounts.journeyId should not be None
+      accounts.journeyId.length should not equal 0
+    }
   }
 
   "Authorisation grantAccess" should {
@@ -162,7 +183,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory {
     //TODO add a test for CredentialStrength(CredentialStrength.strong) Predicate.
 
     "successfully grant access when nino exists and confidence level is 200" in {
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"))
+      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"), Some(testNino))
       val authority = await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       authority.nino.value shouldBe testNino
       authority.cl.level shouldBe 200
@@ -170,31 +191,29 @@ class AuthorisationSpec extends UnitSpec with MockFactory {
     }
 
     "error with unauthorised when account has low CL" in {
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L100, Some("user-details"))
+      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L100, Some("user-details"), Some(testNino))
       intercept[AccountWithLowCL] {
         await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       }
     }
 
-    //TODO fix these failing tests
+    "fail to return authority when no NINO exists" in {
+      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"))
+      intercept[NinoNotFoundOnAccount] {
+        await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
+      }
 
-//    "fail to return authority when no NINO exists" in {
-//      mockAuthGrantAccess(Some(""), ConfidenceLevel.L200, Some("user-details"))
-//      intercept[NinoNotFoundOnAccount] {
-//        await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
-//      }
-//
-//      mockAuthGrantAccess(None, ConfidenceLevel.L200, Some("user-details"))
-//      intercept[NinoNotFoundOnAccount] {
-//        await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
-//      }
-//    }
-//
-//    "fail to return authority when auth NINO does not match request NINO" in {
-//      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L100, Some("user-details"))
-//      intercept[FailToMatchTaxIdOnAuth] {
-//        await(authorisation(mockAuthConnector).grantAccess(Nino("AB123450C")))
-//      }
-//    }
+      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"), Some(""))
+      intercept[NinoNotFoundOnAccount] {
+        await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
+      }
+    }
+
+    "fail to return authority when auth NINO does not match request NINO" in {
+      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"), Some("AB123450C"))
+      intercept[FailToMatchTaxIdOnAuth] {
+        await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
+      }
+    }
   }
 }

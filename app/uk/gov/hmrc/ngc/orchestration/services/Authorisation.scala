@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.ngc.orchestration.services
 
+import java.util.UUID
+
 import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.AuthProvider.GovernmentGateway
 import uk.gov.hmrc.auth.core._
@@ -40,12 +42,13 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
   self: Confidence ⇒
 
   def getAccounts(journeyId: Option[String])(implicit hc: HeaderCarrier) = {
-    authorised(Individual and AuthProviders(GovernmentGateway))
+    authorised()
       .retrieve(nino and saUtr and affinityGroup  and authProviderId and credentialStrength and confidenceLevel) {
       case nino ~ saUtr ~ affinityGroup ~ authProviderId ~ credentialStrength ~ confidenceLevel ⇒ {
         val routeToIV = confLevel > confidenceLevel.level
+        val journeyIdentifier = journeyId.filter(id ⇒ id.length > 0).getOrElse(UUID.randomUUID().toString)
         Future(Accounts(nino.map(Nino(_)), saUtr.map(SaUtr(_)), routeToIV, twoFactorRequired(credentialStrength),
-          journeyId.get, authProviderId.asInstanceOf[GGCredId].credId, affinityGroup.get.toString()))
+          journeyIdentifier, authProviderId.asInstanceOf[GGCredId].credId, affinityGroup.get.toString()))
       }
     }
   }

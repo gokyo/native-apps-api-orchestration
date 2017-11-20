@@ -27,7 +27,7 @@ import org.scalatest.concurrent.Eventually
 import org.scalatest.mockito.MockitoSugar
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.libs.json._
-import play.api.mvc
+import play.api.{Configuration, mvc}
 import play.api.mvc.{AnyContentAsEmpty, AnyContentAsJson}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
@@ -44,8 +44,8 @@ import uk.gov.hmrc.ngc.orchestration.services._
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{ExecutionContext, Future}
 
 class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with MockitoSugar {
 
