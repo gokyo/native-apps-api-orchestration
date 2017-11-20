@@ -105,19 +105,16 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
     }
 
-
-    //TODO replicate this scenario
-
-//    "return 401 HTTP status code when calls to retrieve the auth account fails" in {
-//      val nino = "CS700100A"
-//      writeAuditSucceeds()
-//      registrationWillSucceed()
-//      authorisedFunctionSucceeds(nino)
-//      versionCheckSucceeds(upgrade = false)
-//      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
-//      val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
-//      response.status shouldBe 401
-//    }
+    "return 401 HTTP status code when calls to retrieve the auth account fails" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      registrationWillSucceed()
+      authorisedFunctionFailsWithStatus(401)
+      versionCheckSucceeds(upgrade = false)
+      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
+      val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 401
+    }
 
     "call the MFA API URI and return routeToTwoFactor=true when cred-strength is not strong" in {
       val nino = "CS700100A"
