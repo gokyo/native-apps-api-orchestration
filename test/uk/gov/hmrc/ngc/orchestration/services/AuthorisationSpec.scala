@@ -34,11 +34,7 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
-import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalamock.scalatest.MockFactory
-import org.scalatest.mockito.MockitoSugar
-import uk.gov.hmrc.auth.core.AffinityGroup.Individual
-import uk.gov.hmrc.auth.core.AuthProvider.GovernmentGateway
 import uk.gov.hmrc.auth.core.{AuthConnector, _}
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
@@ -83,16 +79,6 @@ class AuthorisationSpec extends UnitSpec with MockFactory {
     (authConnector.authorise(_: Predicate, _: AccountsRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(*, accountsRetrievals, *, *)
       .returning(Future.successful(new ~(new ~(new ~(new ~(new ~(nino, saUtr), affinityGroup), authProviderId), credStrength), confLevel)))
-  }
-
-  def mockAuthorisationThrowsUnsupportedAffinityGroup(authConnector: AuthConnector) = {
-    Mockito.when(authConnector.authorise(ArgumentMatchers.any[Predicate](),ArgumentMatchers.any[AccountsRetrieval]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
-      .thenReturn(Future.failed(AuthorisationException.fromString("UnsupportedAffinityGroup")))
-  }
-
-  def mockAuthorisationThrowsUnsupportedAuthProvider(authConnector: AuthConnector) = {
-    Mockito.when(authConnector.authorise(ArgumentMatchers.any[Predicate](),ArgumentMatchers.any[AccountsRetrieval]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
-      .thenReturn(Future.failed(AuthorisationException.fromString("UnsupportedAuthProvider")))
   }
 
   def mockAuthGrantAccess(nino: Option[String], confLevel: ConfidenceLevel, userDetailsUri: Option[String], returnNino: Option[String] = None) = {
