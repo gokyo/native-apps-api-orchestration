@@ -135,13 +135,13 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
   }
 
-  type GrantAccess = ~[~[Option[String], ConfidenceLevel], Option[String]]
+  type GrantAccess = Option[String] ~ ConfidenceLevel ~ Option[String]
   def stubAuthorisationGrantAccess(response: GrantAccess)(implicit authConnector: AuthConnector): OngoingStubbing[Future[GrantAccess]] = {
     when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GrantAccess]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
-  type GetAccounts =  ~[~[~[~[~[Option[String], Option[String]], Option[AffinityGroup]], LegacyCredentials], Option[String]], ConfidenceLevel]
+  type GetAccounts = Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ LegacyCredentials ~ Option[String] ~ ConfidenceLevel
   def stubAuthorisationGetAccounts(response: GetAccounts)(implicit authConnector: AuthConnector) = {
     when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GetAccounts]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
