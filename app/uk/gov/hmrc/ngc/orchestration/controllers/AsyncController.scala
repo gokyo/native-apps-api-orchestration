@@ -96,8 +96,3 @@ trait AsyncController extends BaseController with HeaderValidator with ErrorHand
     }
   }
 }
-
-object LiveAsyncController extends AsyncController {
-  override val repository: AsyncRepository = AsyncRepository()
-  override val app: String = "Live Async Controller"
-}

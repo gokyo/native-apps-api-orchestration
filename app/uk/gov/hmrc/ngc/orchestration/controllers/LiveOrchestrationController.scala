@@ -18,9 +18,11 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 
 import javax.inject.{Named, Singleton}
 
+import akka.actor.ActorSystem
 import com.google.inject.Inject
 import play.api.Logger
 import play.api.http.HeaderNames
+import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsSuccess, JsValue, Json}
 import play.api.mvc._
 import uk.gov.hmrc.api.controllers.HeaderValidator
@@ -42,7 +44,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
 
 
-trait NativeAppsOrchestrationController extends AsyncController with Auditor with GenericServiceCheck  with HeaderValidator with Authorisation with ErrorHandling {
+trait NativeAppsOrchestrationController extends AsyncController with Auditor with GenericServiceCheck with HeaderValidator with Authorisation with ErrorHandling {
   val service: OrchestrationService
   val serviceMax: Int
   val eventMax: Int
@@ -176,12 +178,15 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
 }
 
 @Singleton
-class LiveOrchestrationController  @Inject()( override val authConnector: AuthConnector,
-                                              override val service: LiveOrchestrationService,
-                                             @Named("serviceMax") override val serviceMax: Int,
-                                             @Named("eventMax") override val eventMax: Int,
-                                             @Named("confidenceLevel") override val confLevel: Int,
-                                             @Named("pollMaxAge") override val maxAgeForSuccess: Int) extends NativeAppsOrchestrationController {
+class LiveOrchestrationController  @Inject()(
+  override val authConnector: AuthConnector,
+  override val service: LiveOrchestrationService,
+  override val actorSystem: ActorSystem,
+  override val lifecycle: ApplicationLifecycle,
+  @Named("serviceMax") override val serviceMax: Int,
+  @Named("eventMax") override val eventMax: Int,
+  @Named("confidenceLevel") override val confLevel: Int,
+  @Named("pollMaxAge") override val maxAgeForSuccess: Int) extends NativeAppsOrchestrationController {
 
   override val app: String = "Live-Orchestration-Controller"
   override lazy val repository:AsyncRepository = AsyncRepository()

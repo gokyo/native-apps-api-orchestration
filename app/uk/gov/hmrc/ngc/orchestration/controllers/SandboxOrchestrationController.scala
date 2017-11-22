@@ -18,7 +18,9 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 
 import javax.inject.{Named, Singleton}
 
+import akka.actor.ActorSystem
 import com.google.inject.Inject
+import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BodyParsers, Cookie}
 import uk.gov.hmrc.auth.core.AuthConnector
@@ -89,11 +91,14 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
 }
 
 @Singleton
-class SandboxOrchestrationControllerImpl @Inject()(override val authConnector: AuthConnector,
-                                                   override val service: SandboxOrchestrationService,
-                                                   @Named("serviceMax") override val serviceMax: Int,
-                                                   @Named("eventMax") override val eventMax: Int,
-                                                   @Named("confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
+class SandboxOrchestrationControllerImpl @Inject()(
+  override val authConnector: AuthConnector,
+  override val service: SandboxOrchestrationService,
+  override val actorSystem: ActorSystem,
+  override val lifecycle: ApplicationLifecycle,
+  @Named("serviceMax") override val serviceMax: Int,
+  @Named("eventMax") override val eventMax: Int,
+  @Named("confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
   val auditConnector: AuditConnector = NextGenAuditConnector
   override val maxAgeForSuccess: Int = 14400
 }

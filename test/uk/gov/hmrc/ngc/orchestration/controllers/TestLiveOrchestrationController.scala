@@ -16,10 +16,11 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
+import akka.actor.ActorSystem
+import play.api.inject.ApplicationLifecycle
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.ngc.orchestration.services.LiveOrchestrationService
 
-class TestLiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
-  LiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
+class TestLiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
+  LiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
 }
-
