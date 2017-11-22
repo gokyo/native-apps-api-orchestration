@@ -74,7 +74,14 @@ trait AsyncMvcIntegration extends AsyncMVC[AsyncResponse] {
 
   final val CLIENT_TIMEOUT=115000L
 
-  lazy val asyncActor: ActorRef = actorSystem.actorOf(Props(new AsyncMVCAsyncActor(taskCache, CLIENT_TIMEOUT)), actorName)
+  lazy val asyncActor: ActorRef = {
+    val as = actorSystem
+    Logger.debug(s"Using actor system ${as.name} for $actorName")
+    as.registerOnTermination {
+      Logger.debug(s"Actor system ${as.name} for $actorName was terminated")
+    }
+    as.actorOf(Props(new AsyncMVCAsyncActor(taskCache, CLIENT_TIMEOUT)), actorName)
+  }
   override def         actorRef = asyncActor
   override def getClientTimeout = CLIENT_TIMEOUT
 
