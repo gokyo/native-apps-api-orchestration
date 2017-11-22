@@ -17,15 +17,19 @@
 package uk.gov.hmrc.ngc.orchestration.controllers
 
 import akka.actor.{ActorRef, ActorSystem, Props}
+import akka.pattern.gracefulStop
 import play.api.Logger
+import play.api.Play.current
+import play.api.inject.ApplicationLifecycle
 import play.api.libs.concurrent.Akka
+import play.api.libs.concurrent.Execution.defaultContext
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContent, Call, Controller, Request}
 import uk.gov.hmrc.play.asyncmvc.async.{AsyncMVC, AsyncPaths}
-import play.api.Play.current
-import play.api.inject.ApplicationLifecycle
 
 import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.language.postfixOps
 
 /**
   * All subclasses must be @Singletons because this trait registers a shutdown hook
@@ -65,15 +69,28 @@ trait AsyncMvcIntegration extends AsyncMVC[AsyncResponse] {
   final val CLIENT_TIMEOUT=115000L
 
   lazy val asyncActor: ActorRef = {
-    lifecycle.addStopHook { () =>
-      Future.successful {
-        Logger.debug(s"Stopping actor $actorName")
-        actorSystem.stop(actorRef)
-      }
-    }
+    addStopActorHook()
 
     actorSystem.actorOf(Props(new AsyncMVCAsyncActor(taskCache, CLIENT_TIMEOUT)), actorName)
   }
+
+  private def addStopActorHook(): Unit = {
+    lifecycle.addStopHook { () =>
+      stopActor()
+    }
+  }
+
+  private def stopActor(): Future[Unit] = {
+    Logger.debug(s"Stopping actor $actorName")
+    gracefulStop(actorRef, stopTimeout).map {
+      case true =>
+        Logger.debug(s"Stopped actor $actorName")
+      case false =>
+        Logger.debug(s"Failed to stop actor $actorName")
+    }(defaultContext)
+  }
+
+  protected val stopTimeout: FiniteDuration = 20 seconds
 
   override def         actorRef = asyncActor
   override def getClientTimeout = CLIENT_TIMEOUT
