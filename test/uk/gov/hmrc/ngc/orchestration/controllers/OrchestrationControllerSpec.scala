@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
 import org.joda.time.{DateTime, LocalDate}
+import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.when
 import org.mockito.stubbing.OngoingStubbing
 import org.mockito.{ArgumentMatchers, Mockito}
@@ -91,13 +92,13 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
                                |}""".stripMargin))
 
   def mockServicePreFlightCall(response: PreFlightCheckResponse): OngoingStubbing[Future[PreFlightCheckResponse]] = {
-    Mockito.when(mockLiveOrchestrationService.preFlightCheck(ArgumentMatchers.any[PreFlightRequest](), ArgumentMatchers.any[Option[String]]())(ArgumentMatchers.any[HeaderCarrier]()))
+    when(mockLiveOrchestrationService.preFlightCheck(any[PreFlightRequest](), any[Option[String]]())(any[HeaderCarrier]()))
       .thenReturn(Future.successful(response))
   }
 
   type GrantAccess = ~[~[Option[String], ConfidenceLevel], Option[String]]
   def stubAuthorisationGrantAccess(response: GrantAccess)(implicit authConnector: AuthConnector): OngoingStubbing[Future[GrantAccess]] = {
-    when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GrantAccess]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+    when(authConnector.authorise(any[Predicate](), any[Retrieval[GrantAccess]]())(any[HeaderCarrier](), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
