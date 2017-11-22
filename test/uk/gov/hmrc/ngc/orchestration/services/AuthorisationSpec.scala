@@ -16,38 +16,22 @@
 
 package uk.gov.hmrc.ngc.orchestration.services
 
-/*
- * Copyright 2017 HM Revenue & Customs
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
 import java.util.UUID
 
 import org.scalamock.scalatest.MockFactory
-import uk.gov.hmrc.auth.core.{AuthConnector, _}
-import uk.gov.hmrc.auth.core.authorise.Predicate
+import org.scalatest.OneInstancePerTest
+import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.retrieve.{Retrieval, _}
+import uk.gov.hmrc.auth.core.{AuthConnector, _}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.controllers.{AccountWithLowCL, FailToMatchTaxIdOnAuth, NinoNotFoundOnAccount}
 import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.{ExecutionContext, Future}
-import scala.concurrent.ExecutionContext.Implicits.global
 
-class AuthorisationSpec extends UnitSpec with MockFactory {
+class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTest {
 
 
   implicit val hc = HeaderCarrier()
@@ -77,7 +61,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory {
                           authProviderId: LegacyCredentials,credStrength: Option[String],
                           confLevel: ConfidenceLevel) = {
     (authConnector.authorise(_: Predicate, _: AccountsRetrieval)(_: HeaderCarrier, _: ExecutionContext))
-      .expects(*, accountsRetrievals, *, *)
+      .expects(EmptyPredicate, accountsRetrievals, *, *)
       .returning(Future.successful(new ~(new ~(new ~(new ~(new ~(nino, saUtr), affinityGroup), authProviderId), credStrength), confLevel)))
   }
 
