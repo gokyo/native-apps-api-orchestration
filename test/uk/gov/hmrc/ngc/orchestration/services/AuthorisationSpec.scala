@@ -23,6 +23,7 @@ import org.scalatest.OneInstancePerTest
 import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.retrieve.{Retrieval, _}
+import uk.gov.hmrc.auth.core.syntax.retrieved._
 import uk.gov.hmrc.auth.core.{AuthConnector, _}
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
@@ -62,13 +63,13 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
                           confLevel: ConfidenceLevel) = {
     (authConnector.authorise(_: Predicate, _: AccountsRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(EmptyPredicate, accountsRetrievals, *, *)
-      .returning(Future.successful(new ~(new ~(new ~(new ~(new ~(nino, saUtr), affinityGroup), authProviderId), credStrength), confLevel)))
+      .returning(Future.successful(nino and saUtr and affinityGroup and authProviderId and credStrength and confLevel))
   }
 
   def mockAuthGrantAccess(nino: Option[String], confLevel: ConfidenceLevel, userDetailsUri: Option[String], returnNino: Option[String] = None) = {
     (mockAuthConnector.authorise(_: Predicate, _: GrantAccessRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", nino.getOrElse(""))), "Activated", None) and CredentialStrength(CredentialStrength.strong), grantAccessRetrievals, *, *)
-      .returning(Future.successful(new ~(new ~(returnNino, confLevel), userDetailsUri)))
+      .returning(Future.successful(returnNino and confLevel and userDetailsUri))
   }
 
   "Authorisation getAccounts" should {

@@ -35,6 +35,7 @@ import play.api.test.Helpers._
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.{Retrieval, ~}
+import uk.gov.hmrc.auth.core.syntax.retrieved._
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.repository.AsyncRepository
@@ -139,7 +140,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return unauthorized when authority record does not contain a NINO" in new mocks {
-      stubAuthorisationGrantAccess(new ~(new ~(Some(""), ConfidenceLevel.L50), Some("creds")))
+      stubAuthorisationGrantAccess(Some("") and ConfidenceLevel.L50 and Some("creds"))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, 10, 10, 200, 30000, "UnauthorisedNoNino")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
@@ -159,7 +160,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return 401 result with json status detailing low CL on authority" in new mocks {
-      stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L50), Some("creds")))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L50 and Some("creds"))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, 10, 10, 200, 30000, "TestingLowCL")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
