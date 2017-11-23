@@ -19,9 +19,9 @@ package uk.gov.hmrc.ngc.orchestration.services
 import java.util.UUID
 
 import org.joda.time.DateTime
+import org.mockito.ArgumentMatchers.{any, anyString, eq => eqs}
 import org.mockito.Mockito.when
 import org.mockito.stubbing.OngoingStubbing
-import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.mockito.MockitoSugar
 import play.api.Configuration
 import play.api.libs.json.{JsValue, Json}
@@ -30,12 +30,12 @@ import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier, Upstream4xxResponse, Upstream5xxResponse}
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.BadRequestException
-import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, MfaURI}
+import uk.gov.hmrc.ngc.orchestration.domain.Accounts
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoSugar {
 
@@ -59,7 +59,7 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
   val mfaAuthenticatedJourney = "/multi-factor-authentication/authenticatedJourney"
   val mfaApiURI = "/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"
 
-  def stubConfiguration(): OngoingStubbing[Option[Seq[String]]] = Mockito.when(mockConfiguration.getStringSeq(ArgumentMatchers.eq("scopes")))
+  def stubConfiguration(): OngoingStubbing[Option[Seq[String]]] = when(mockConfiguration.getStringSeq(eqs("scopes")))
     .thenReturn(Some(Seq( "read:personal-income",
                           "read:customer-profile",
                           "read:messages",
@@ -68,31 +68,31 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                           "read:native-apps-api-orchestration")))
 
   def stubHostAndPortGenericConnector()(implicit genericConnector: GenericConnector): OngoingStubbing[Int] = {
-    when(genericConnector.host(ArgumentMatchers.anyString())).thenReturn(host)
-    when(genericConnector.port(ArgumentMatchers.anyString())).thenReturn(port)
+    when(genericConnector.host(anyString())).thenReturn(host)
+    when(genericConnector.port(anyString())).thenReturn(port)
   }
 
   def stubGETGenericConnectorResponse(path: String, response: JsValue)(implicit genericConnector: GenericConnector): OngoingStubbing[Future[JsValue]] = {
-    when(genericConnector.doGet(ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    when(genericConnector.doGet(anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
       .thenReturn(Future(response))
   }
 
   def stubPOSTGenericConnectorResponse(path: String, response: JsValue)(implicit genericConnector: GenericConnector): OngoingStubbing[Future[JsValue]] = {
-    when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
   def stubPOSTGenericConnectorFailure(path: String, status: Int)(implicit genericConnector: GenericConnector): Any = {
     if(status >= 400 && status < 500) {
-      when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream4xxResponse("", status, status)))
     }
-    if(status == 500){
-      when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    if(status == 500) {
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream5xxResponse("", status, status)))
     }
-    if(status == 504){
-      when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    if(status == 504) {
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
         .thenReturn(Future.failed(new GatewayTimeoutException("")))
     }
   }
