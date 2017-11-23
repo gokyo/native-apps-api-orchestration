@@ -116,21 +116,21 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, expectedResponse)
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("start", None)
-      val response = await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+      val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       response.routeToTwoFactor shouldBe true
 
     }
 
     "return bad request when the MFA operation supplied is invalid" in new mocks {
       stubConfiguration()
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("INVALID_OPERATION", None)
       intercept[BadRequestException] {
-        await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+        await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       }
     }
 
@@ -157,10 +157,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
-      val response = await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+      val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       response.routeToTwoFactor shouldBe true
     }
 
@@ -181,11 +181,11 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", None)
       intercept[BadRequestException] {
-        await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+        await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       }
 
     }
@@ -208,10 +208,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
-      val response = await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+      val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       response.routeToTwoFactor shouldBe false
     }
 
@@ -233,10 +233,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
-      val response = await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+      val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       response.routeToTwoFactor shouldBe false
     }
 
@@ -259,10 +259,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mFAIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
-      val response = await(mFAIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
+      val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
       response.routeToTwoFactor shouldBe false
 
     }
