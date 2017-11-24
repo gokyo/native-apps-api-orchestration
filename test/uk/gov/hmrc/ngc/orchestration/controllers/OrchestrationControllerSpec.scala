@@ -47,6 +47,7 @@ import uk.gov.hmrc.ngc.orchestration.services._
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 import play.api.Play.current
+import play.modules.reactivemongo.ReactiveMongoComponent
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
@@ -67,6 +68,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
 
   lazy val actorSystem: ActorSystem = Akka.system
   lazy val lifecycle: ApplicationLifecycle = current.injector.instanceOf[ApplicationLifecycle]
+  lazy val reactiveMongo: ReactiveMongoComponent = current.injector.instanceOf[ReactiveMongoComponent]
 
   val mockLiveOrchestrationService: LiveOrchestrationService = mock[LiveOrchestrationService]
 
@@ -115,7 +117,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val versionBody: JsValue = Json.parse("""{"os":"android", "version":"1.0.1"}""")
       val versionRequest: FakeRequest[JsValue] = FakeRequest().withBody(versionBody).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json")
 
-      val controller = new TestLiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, 10, 10, 200, 30000, "PreflightHappyPath")
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "PreflightHappyPath")
       val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))(Duration(10,TimeUnit.SECONDS))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe Json.toJson(expectation)
@@ -148,7 +150,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     "return unauthorized when authority record does not contain a NINO" in new mocks {
       stubAuthorisationGrantAccess(new ~(new ~(Some(""), ConfidenceLevel.L50), Some("creds")))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
-      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, 10, 10, 200, 30000, "UnauthorisedNoNino")
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "UnauthorisedNoNino")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
       jsonBodyOf(response) shouldBe TestData.pollResponse
@@ -168,7 +170,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     "return 401 result with json status detailing low CL on authority" in new mocks {
       stubAuthorisationGrantAccess(new ~(new ~(Some(nino), ConfidenceLevel.L50), Some("creds")))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
-      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, 10, 10, 200, 30000, "TestingLowCL")
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "TestingLowCL")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
       jsonBodyOf(response) shouldBe TestData.pollResponse
@@ -186,7 +188,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return status code 406 when the headers are invalid" in new mocks {
-      val controller = new LiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, 10, 10, 200, 30000)
+      val controller = new LiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000)
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithoutHeaders))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 406
       Json.stringify(jsonBodyOf(response)) shouldBe """{"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"}"""
