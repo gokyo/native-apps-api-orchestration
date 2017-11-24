@@ -19,15 +19,13 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern.gracefulStop
 import play.api.Logger
-import play.api.Play.current
 import play.api.inject.ApplicationLifecycle
-import play.api.libs.concurrent.Akka
 import play.api.libs.concurrent.Execution.defaultContext
 import play.api.libs.json.Json
 import play.api.mvc.{AnyContent, Call, Controller, Request}
 import uk.gov.hmrc.play.asyncmvc.async.{AsyncMVC, AsyncPaths}
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -39,9 +37,9 @@ trait AsyncMvcIntegration extends AsyncMVC[AsyncResponse] {
 
   self:Controller =>
 
-  // TODO it would be better to inject these
-  private def actorSystem: ActorSystem = Akka.system
-  private def lifecycle: ApplicationLifecycle = current.injector.instanceOf[ApplicationLifecycle]
+  protected def actorSystem: ActorSystem
+  protected def lifecycle: ApplicationLifecycle
+  protected def playExecutionContext: ExecutionContext = defaultContext
 
   val actorName = "async_native-apps-api-actor"
   override def id = "async_native-apps-api-id"

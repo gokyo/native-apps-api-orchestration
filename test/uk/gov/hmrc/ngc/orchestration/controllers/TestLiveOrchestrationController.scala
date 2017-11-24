@@ -16,10 +16,37 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
+import akka.actor.ActorSystem
+import play.api.inject.ApplicationLifecycle
+import play.modules.reactivemongo.ReactiveMongoComponent
+import reactivemongo.bson.BSONObjectID
 import uk.gov.hmrc.auth.core.AuthConnector
+import uk.gov.hmrc.mongo.{DatabaseUpdate, Updated}
+import uk.gov.hmrc.msasync.repository.{AsyncRepository, TaskCachePersist}
 import uk.gov.hmrc.ngc.orchestration.services.LiveOrchestrationService
+import uk.gov.hmrc.play.asyncmvc.model.TaskCache
 
-class TestLiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
-  LiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
+import scala.concurrent.Future
+
+class TestLiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, reactiveMongo: ReactiveMongoComponent, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
+  LiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
+
+  override lazy val repository = new AsyncRepository {
+
+    var cache:Option[Map[BSONObjectID, TaskCache]] = Some(Map())
+
+    override def findByTaskId(id: String): Future[Option[TaskCachePersist]] = {
+      val update = TaskCachePersist(BSONObjectID.apply(id), cache.get(BSONObjectID.apply(id)))
+      Future.successful(Some(update))
+    }
+
+    override def removeById(id: String): Future[Unit] = Future.successful({})
+
+    override def save(expectation: TaskCache, expire: Long): Future[DatabaseUpdate[TaskCachePersist]] = {
+      val id = BSONObjectID.generate
+      cache++ Some(Map(id → expectation))
+      val update = TaskCachePersist(id, expectation)
+      Future.successful(DatabaseUpdate(null, Updated(update,update)))
+    }
+  }
 }
-
