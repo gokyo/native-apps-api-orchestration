@@ -204,7 +204,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val versionRequestWithAuth: FakeRequest[JsValue] = FakeRequest().withBody(versionBody).withSession(
           "AuthToken" -> "Some Header"
         ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
-      val sandboxOrchestrationService = new SandboxOrchestrationService()
+      val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector)
       val controller = new SandboxOrchestrationControllerImpl(mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
       val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithAuth))
       status(result) shouldBe 200
@@ -216,7 +216,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val requestWithAuth: FakeRequest[AnyContentAsJson] = FakeRequest().withJsonBody(Json.obj()).withSession(
         "AuthToken" -> "Some Header"
       ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
-      val sandboxOrchestrationService = new SandboxOrchestrationService()
+      val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector)
       val controller = new SandboxOrchestrationControllerImpl(mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
       val result: mvc.Result = await(controller.orchestrate(Nino(nino),Some(journeyId))(requestWithAuth))(Duration(10, TimeUnit.SECONDS))
       status(result) shouldBe 200
@@ -228,7 +228,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val requestWithAuth: FakeRequest[AnyContentAsJson] = FakeRequest().withJsonBody(Json.obj()).withSession(
         "AuthToken" -> "Some Header"
       ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
-      val sandboxOrchestrationService = new SandboxOrchestrationService()
+      val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector)
       val controller = new SandboxOrchestrationControllerImpl(mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
       val result: mvc.Result = await(controller.poll(Nino(nino))(requestWithAuth))
       status(result) shouldBe 200

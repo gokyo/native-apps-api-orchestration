@@ -16,16 +16,18 @@
 
 package uk.gov.hmrc.ngc.orchestration.connectors
 
+import javax.inject.Inject
+
 import com.google.inject.Singleton
 import play.api.libs.json.JsValue
-import play.api.{Configuration, Logger, Play}
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class GenericConnector {
+class GenericConnector @Inject() (configuration: Configuration) {
 
   def host(serviceName: String) = getConfigProperty(serviceName, "host")
 
@@ -59,7 +61,7 @@ class GenericConnector {
       .getOrElse(throw new Exception(s"No service configuration found for $serviceName"))
   }
   private def getServiceConfig(serviceName: String): Configuration = {
-    Play.current.configuration.getConfig(s"microservice.services.$serviceName")
+    configuration.getConfig(s"microservice.services.$serviceName")
       .getOrElse(throw new Exception(s"No micro services configured for $serviceName"))
   }
 }

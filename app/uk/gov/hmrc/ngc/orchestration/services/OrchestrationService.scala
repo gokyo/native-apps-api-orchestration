@@ -156,9 +156,9 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
 }
 
 @Singleton
-class SandboxOrchestrationService extends OrchestrationService with FileResource with ExecutorFactory {
+class SandboxOrchestrationService @Inject() (override val genericConnector: GenericConnector)
+  extends OrchestrationService with FileResource with ExecutorFactory {
 
-  override val genericConnector: GenericConnector = new GenericConnector()
   override val auditConnector = NextGenAuditConnector
 
   val cache: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
