@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.ngc.orchestration.services
 
-import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.libs.functional.syntax._
@@ -98,7 +97,7 @@ case class AuthExchangeResponse(access_token: BearerToken,
 
 @Singleton
 class MFAIntegration @Inject()(genericConnector: GenericConnector,
-                               @Named("config") config: Configuration) {
+                               config: Configuration) {
 
   val scopes = config.getStringSeq("scopes").get
   final val VALIDATE_URL = "/validateMFAoutcome"  // The URL returned from MFA web journeys which indicates the trigger to end wen journey and validate outcome.

@@ -50,7 +50,5 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
     bindConstant().annotatedWith(Names.named("pollMaxAge"))
       .to(configuration.getInt("poll.success.maxAge").getOrElse(throw new Exception(s"Failed to resolve config key poll.success.maxAge")))
 
-    bind(classOf[Configuration]).annotatedWith(Names.named("config")).toInstance(configuration)
-
   }
 }
