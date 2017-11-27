@@ -17,9 +17,9 @@
 package uk.gov.hmrc.ngc.orchestration.connectors
 
 import com.google.inject.Singleton
-import play.api.{Configuration, Logger, Play}
 import play.api.libs.json.JsValue
-import uk.gov.hmrc.http.{HeaderCarrier, HttpGet, HttpPost, HttpResponse}
+import play.api.{Configuration, Logger, Play}
+import uk.gov.hmrc.http._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -31,7 +31,7 @@ class GenericConnector {
 
   def port(serviceName: String) = getConfigProperty(serviceName, "port").toInt
 
-  def http: HttpPost with HttpGet = WSHttp
+  def http: CorePost with CoreGet = WSHttp
 
   def logHC(hc: HeaderCarrier, path:String) =   Logger.info(s"transport: HC received is ${hc.authorization} for path $path")
 
