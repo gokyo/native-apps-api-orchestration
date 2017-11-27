@@ -20,18 +20,17 @@ import javax.inject.{Named, Singleton}
 
 import akka.actor.ActorSystem
 import com.google.inject.Inject
-import play.api.{Logger, Play}
+import play.api.Logger
 import play.api.http.HeaderNames
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsSuccess, JsValue, Json}
 import play.api.mvc._
-import play.modules.reactivemongo.{MongoDbConnection, ReactiveMongoComponent}
+import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.api.controllers.HeaderValidator
 import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.mongo.MongoConnector
 import uk.gov.hmrc.msasync.repository.{AsyncMongoRepository, AsyncRepository}
 import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.live.GenericServiceCheck
@@ -186,10 +185,10 @@ class LiveOrchestrationController  @Inject()(
   override val actorSystem: ActorSystem,
   override val lifecycle: ApplicationLifecycle,
   val reactiveMongo: ReactiveMongoComponent,
-  @Named("serviceMax") override val serviceMax: Int,
-  @Named("eventMax") override val eventMax: Int,
-  @Named("confidenceLevel") override val confLevel: Int,
-  @Named("pollMaxAge") override val maxAgeForSuccess: Int) extends NativeAppsOrchestrationController {
+  @Named("supported.generic.service.max") override val serviceMax: Int,
+  @Named("supported.generic.event.max") override val eventMax: Int,
+  @Named("controllers.confidenceLevel") override val confLevel: Int,
+  @Named("poll.success.maxAge") override val maxAgeForSuccess: Int) extends NativeAppsOrchestrationController {
 
   override val app: String = "Live-Orchestration-Controller"
   override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.mongoConnector.db)

@@ -22,7 +22,6 @@ import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
 import play.api.Logger
 import play.api.libs.json._
-import uk.gov.hmrc.api.controllers.ErrorInternalServerError
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
@@ -30,10 +29,8 @@ import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.config.{ConfiguredCampaigns, NextGenAuditConnector}
 import uk.gov.hmrc.ngc.orchestration.connectors._
-import uk.gov.hmrc.ngc.orchestration.controllers.{ErrorUnauthorizedNoNino, NinoNotFoundOnAccount}
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
-import uk.gov.hmrc.ngc.orchestration.services
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.time.TaxYear
 
@@ -70,7 +67,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
                                          override val genericConnector: GenericConnector,
                                          override val auditConnector: AuditConnector,
                                          override val authConnector: AuthConnector,
-                                         @Named("confidenceLevel") override val confLevel: Int)
+                                         @Named("controllers.confidenceLevel") override val confLevel: Int)
   extends OrchestrationService with Authorisation with ExecutorFactory with Auditor with ConfiguredCampaigns {
 
   override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {

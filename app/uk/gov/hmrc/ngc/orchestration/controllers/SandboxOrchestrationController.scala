@@ -32,8 +32,8 @@ import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.http.logging.MdcLoggingExecutionContext
 
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.{ExecutionContext, Future}
 
 trait SandboxOrchestrationController extends NativeAppsOrchestrationController with SandboxPoll {
   override val actorName = "sandbox-async_native-apps-api-actor"
@@ -96,9 +96,9 @@ class SandboxOrchestrationControllerImpl @Inject()(
   override val service: SandboxOrchestrationService,
   override val actorSystem: ActorSystem,
   override val lifecycle: ApplicationLifecycle,
-  @Named("serviceMax") override val serviceMax: Int,
-  @Named("eventMax") override val eventMax: Int,
-  @Named("confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
+  @Named("supported.generic.service.max") override val serviceMax: Int,
+  @Named("supported.generic.event.max") override val eventMax: Int,
+  @Named("controllers.confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
   val auditConnector: AuditConnector = NextGenAuditConnector
   override val maxAgeForSuccess: Int = 14400
 }

@@ -30,7 +30,7 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
   override protected lazy val mode: Mode = environment.mode
   override protected lazy val runModeConfiguration: Configuration = configuration
 
-  override def configure() = {
+  override def configure(): Unit = {
 
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
 
@@ -38,17 +38,20 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
 
     bind(classOf[AuditConnector]).toInstance(NextGenAuditConnector)
 
-    bindConstant().annotatedWith(Names.named("serviceMax"))
-      .to(configuration.getInt("supported.generic.service.max").getOrElse(1))
+    bindConfigInt("supported.generic.service.max")
+    bindConfigInt("supported.generic.event.max")
 
-    bindConstant().annotatedWith(Names.named("eventMax"))
-      .to(configuration.getInt("supported.generic.event.max").getOrElse(1))
+    bindConfigInt("controllers.confidenceLevel")
 
-    bindConstant().annotatedWith(Names.named("confidenceLevel"))
-      .to(configuration.getInt("controllers.confidenceLevel").getOrElse(throw new Exception()))
+    bindConfigInt("poll.success.maxAge")
+  }
 
-    bindConstant().annotatedWith(Names.named("pollMaxAge"))
-      .to(configuration.getInt("poll.success.maxAge").getOrElse(throw new Exception(s"Failed to resolve config key poll.success.maxAge")))
-
+  /**
+    * Binds a configuration value using the `path` as the name for the binding.
+    * Throws an exception if the configuration value does not exist or cannot be read as an Int.
+    */
+  private def bindConfigInt(path: String): Unit = {
+    bindConstant().annotatedWith(Names.named(path))
+      .to(configuration.underlying.getInt(path))
   }
 }
