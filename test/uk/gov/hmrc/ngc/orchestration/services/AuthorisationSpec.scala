@@ -74,7 +74,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
 
   "Authorisation getAccounts" should {
     "find the user and routeToIV and routeToTwoFactor should be true" in {
-      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L50)
+      mockAuthGetAccounts(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L50)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -86,7 +86,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "find the user and routeToIV is false when L200 confidence level and routeToTwoFactor is true" in {
-      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
+      mockAuthGetAccounts(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -98,7 +98,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "find the user and routeToIV and routeToTwoFactor should be false when credential strength is 'string' and confidence is L200" in {
-      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      mockAuthGetAccounts(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -110,7 +110,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "find the user with an account with no nino" in {
-      mockAuthGetAccounts(mockAuthConnector, None, Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
+      mockAuthGetAccounts(mockAuthConnector, None, Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -122,7 +122,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "ignore the supplied journeyId when blank" in {
-      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      mockAuthGetAccounts(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
       val emptyJourneyId = ""
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(emptyJourneyId)))
       accounts.credId shouldBe "some-cred-id"
@@ -136,7 +136,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "generates new journeyId when no journeyId supplied" in {
-      mockAuthGetAccounts(mockAuthConnector, Option(testNino), Option(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      mockAuthGetAccounts(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(None))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -154,7 +154,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     //TODO add a test for CredentialStrength(CredentialStrength.strong) Predicate.
 
     "successfully grant access when nino exists and confidence level is 200" in {
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"), Some(testNino))
+      mockAuthGrantAccess(Some(testNino), ConfidenceLevel.L200, Some("user-details"), Some(testNino))
       val authority = await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       authority.nino.value shouldBe testNino
       authority.cl.level shouldBe 200
@@ -162,26 +162,26 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "error with unauthorised when account has low CL" in {
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L100, Some("user-details"), Some(testNino))
+      mockAuthGrantAccess(Some(testNino), ConfidenceLevel.L100, Some("user-details"), Some(testNino))
       intercept[AccountWithLowCL] {
         await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       }
     }
 
     "fail to return authority when no NINO exists" in {
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"))
+      mockAuthGrantAccess(Some(testNino), ConfidenceLevel.L200, Some("user-details"))
       intercept[NinoNotFoundOnAccount] {
         await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       }
 
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"), Some(""))
+      mockAuthGrantAccess(Some(testNino), ConfidenceLevel.L200, Some("user-details"), Some(""))
       intercept[NinoNotFoundOnAccount] {
         await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       }
     }
 
     "fail to return authority when auth NINO does not match request NINO" in {
-      mockAuthGrantAccess(Option(testNino), ConfidenceLevel.L200, Some("user-details"), Some("AB123450C"))
+      mockAuthGrantAccess(Some(testNino), ConfidenceLevel.L200, Some("user-details"), Some("AB123450C"))
       intercept[FailToMatchTaxIdOnAuth] {
         await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       }
