@@ -2,69 +2,141 @@ package stubs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
 
+/**
+  * Design notes
+  *
+  * The public API of this class is designed to operate in terms of the
+  * characteristics of the calling user, not the details of what auth will
+  * returned.
+  * 
+  * The /auth/authorise endpoint is very flexible so we only stub particular
+  * calls to it that we know this service (native-apps-api-orchestration)
+  * makes. That means that when we change this service to call
+  * /auth/authorise in different ways then we will need to extend or alter
+  * this stubbing.
+  */
 object AuthStub {
 
-  private val oid: String = "$oid"
+  def authorisedWithStrongCredentials(nino: String): Unit = {
+    authoriseWithNoPredicatesWillReturn200(nino, credentialStrengthToReturn = "strong")
+    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "strong")
+  }
 
-  def authRecordExists(nino: String, confidenceLevel: Int = 200, credentialStrength: String = "strong"): Unit = {
-    stubFor(get(urlEqualTo("/auth/authority"))
+  def authorisedWithWeakCredentials(nino: String): Unit = {
+    authoriseWithNoPredicatesWillReturn200(nino, credentialStrengthToReturn = "weak")
+    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "weak")
+  }
+
+  def notAuthorised(): Unit = {
+    stubFor(post(urlEqualTo("/auth/authorise"))
+      .willReturn(aResponse()
+        .withStatus(401)))
+  }
+
+  private def authoriseWithNoPredicatesWillReturn200(nino: String, credentialStrengthToReturn: String): Unit = {
+    stubFor(post(urlEqualTo("/auth/authorise"))
+        .withRequestBody(equalToJson(
+          """
+            |{
+            |  "authorise": [],
+            |  "retrieve": [
+            |    "nino",
+            |    "saUtr",
+            |    "affinityGroup",
+            |    "authProviderId",
+            |    "credentialStrength",
+            |    "confidenceLevel"
+            |  ]
+            |}
+          """.stripMargin,
+          true,
+          false))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(
+          s"""
+            |{
+            |  "nino": "$nino",
+            |  "affinityGroup": "Individual",
+            |  "authProviderId": {
+            |    "ggCredId": "Some-Cred-Id"
+            |  },
+            |  "credentialStrength": "$credentialStrengthToReturn",
+            |  "confidenceLevel": 200
+            |}
+          """.stripMargin)))
+  }
+
+  private def authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino: String, predicateCredentialStrength: String): Unit = {
+    // catch-all case for when /auth/authorised is called with a non-matching NINO
+    authorisedWithNinoPredicateWillReturn401(1)
+
+    // specific case for when /auth/authorise is called with a matching NINO
+    stubFor(post(urlEqualTo("/auth/authorise"))
+        .atPriority(0)
+        .withRequestBody(equalToJson(
+          s"""
+            |{
+            |  "authorise": [
+            |    {
+            |      "enrolment": "HMRC-NI",
+            |      "identifiers": [
+            |        {
+            |          "key": "NINO",
+            |          "value": "$nino"
+            |        }
+            |      ],
+            |      "state": "Activated"
+            |    },
+            |    {
+            |      "credentialStrength": "$predicateCredentialStrength"
+            |    }
+            |  ],
+            |  "retrieve": [
+            |    "nino",
+            |    "confidenceLevel",
+            |    "userDetailsUri"
+            |  ]
+            |}
+          """.stripMargin,
+          true,
+          false))
       .willReturn(aResponse()
         .withStatus(200)
         .withBody(
           s"""
              |{
-             |  "uri": "/auth/oid/$oid",
-             |  "confidenceLevel": $confidenceLevel,
-             |  "credentialStrength": "$credentialStrength",
              |  "nino": "$nino",
-             |  "userDetailsLink": "http://localhost:9978/user-details/id/59db4a285800005800576244",
-             |  "legacyOid": "$oid",
-             |  "new-session": "/auth/oid/$oid/session",
-             |  "ids": "/auth/oid/$oid/ids",
-             |  "credentials": {
-             |    "gatewayId": "ghfkjlgkhl"
-             |  },
-             |  "accounts": {
-             |    "fandf": {
-             |      "nino": "$nino",
-             |      "link": "/fandf/$nino"
-             |    },
-             |    "tai": {
-             |      "nino": "$nino",
-             |      "link": "/tai/$nino"
-             |    },
-             |    "nisp": {
-             |      "nino": "$nino",
-             |      "link": "/nisp/$nino"
-             |    },
-             |    "paye": {
-             |      "nino": "$nino",
-             |      "link": "/paye/$nino"
-             |    },
-             |    "tcs": {
-             |      "nino": "$nino",
-             |      "link": "/tcs/$nino"
-             |    },
-             |    "iht": {
-             |      "nino": "$nino",
-             |      "link": "/iht/$nino"
-             |    }
-             |  },
-             |  "lastUpdated": "2017-10-09T10:06:34.190Z",
-             |  "loggedInAt": "2017-10-09T10:06:34.190Z",
-             |  "levelOfAssurance": "1.5",
-             |  "enrolments": "/auth/oid/$oid/enrolments",
-             |  "affinityGroup": "Individual",
-             |  "correlationId": "8be9ca431b4b8ef3f584990d130270a84c1dbfe2d3e6c23f212d1a52f4c1f926",
-             |  "credId": "cred-id"
+             |  "userDetailsUri": "/test-user-details",
+             |  "confidenceLevel": 200
              |}
-           """.stripMargin)))
+          """.stripMargin)))
   }
 
-  def authRecordDoesNotExist(): Unit = {
-    stubFor(get(urlEqualTo("/auth/authority"))
+  private def authorisedWithNinoPredicateWillReturn401(priority: Int): Unit = {
+    stubFor(post(urlEqualTo("/auth/authorise"))
+      .atPriority(priority)
+      .withRequestBody(equalToJson(
+        s"""
+           |{
+           |  "authorise": [
+           |    {
+           |      "enrolment": "HMRC-NI",
+           |      "identifiers": [
+           |        {
+           |          "key": "NINO"
+           |        }
+           |      ],
+           |      "state": "Activated"
+           |    }
+           |  ]
+           |}
+        """.
+          stripMargin,
+        true,
+        true))
       .willReturn(aResponse()
-        .withStatus(401)))
+          .withStatus(401)))
   }
 
 }
