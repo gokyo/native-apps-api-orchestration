@@ -27,6 +27,7 @@ import org.mockito.Mockito.when
 import org.mockito.stubbing.OngoingStubbing
 import org.scalatest.concurrent.Eventually
 import org.scalatest.mockito.MockitoSugar
+import play.api.Play.current
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.concurrent.Akka
@@ -35,6 +36,7 @@ import play.api.mvc
 import play.api.mvc.{AnyContentAsEmpty, AnyContentAsJson}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.{Retrieval, ~}
@@ -47,8 +49,6 @@ import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, PreFlightCheckResponse}
 import uk.gov.hmrc.ngc.orchestration.services._
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
-import play.api.Play.current
-import play.modules.reactivemongo.ReactiveMongoComponent
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{ExecutionContext, Future}
@@ -104,7 +104,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       .thenReturn(Future.successful(response))
   }
 
-  type GrantAccess = ~[~[Option[String], ConfidenceLevel], Option[String]]
+  type GrantAccess = Option[String] ~ ConfidenceLevel
   def stubAuthorisationGrantAccess(response: GrantAccess)(implicit authConnector: AuthConnector): OngoingStubbing[Future[GrantAccess]] = {
     when(authConnector.authorise(any[Predicate](), any[Retrieval[GrantAccess]]())(any[HeaderCarrier](), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
@@ -149,7 +149,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return unauthorized when authority record does not contain a NINO" in new mocks {
-      stubAuthorisationGrantAccess(Some("") and ConfidenceLevel.L50 and Some("creds"))
+      stubAuthorisationGrantAccess(Some("") and ConfidenceLevel.L50)
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "UnauthorisedNoNino")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
@@ -169,7 +169,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return 401 result with json status detailing low CL on authority" in new mocks {
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L50 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L50)
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "TestingLowCL")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))

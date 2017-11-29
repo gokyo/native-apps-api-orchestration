@@ -103,8 +103,7 @@ object AuthStub {
             |  ],
             |  "retrieve": [
             |    "nino",
-            |    "confidenceLevel",
-            |    "userDetailsUri"
+            |    "confidenceLevel"
             |  ]
             |}
           """.stripMargin,

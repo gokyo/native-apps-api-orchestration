@@ -42,14 +42,13 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
   val testSaUtr: String = "1872796160"
   val mockAuthConnector: AuthConnector = mock[AuthConnector]
 
-  type AccountsRetrieval = Retrieval[~[~[~[~[~[Option[String], Option[String]], Option[AffinityGroup]],
-                           LegacyCredentials], Option[String]], ConfidenceLevel]]
+  type AccountsRetrieval = Retrieval[Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ LegacyCredentials ~ Option[String] ~ ConfidenceLevel]
 
-  type GrantAccessRetrieval = Retrieval[~[~[Option[String], ConfidenceLevel], Option[String]]]
+  type GrantAccessRetrieval = Retrieval[Option[String] ~ ConfidenceLevel]
 
   val accountsRetrievals = nino and saUtr and affinityGroup and authProviderId and credentialStrength and confidenceLevel
 
-  val grantAccessRetrievals = nino and confidenceLevel and userDetailsUri
+  val grantAccessRetrievals = nino and confidenceLevel
 
   def authorisation(mockAuthConnector: AuthConnector): Authorisation = {
     new Authorisation {
@@ -69,7 +68,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
   def mockAuthGrantAccess(nino: Option[String], confLevel: ConfidenceLevel, userDetailsUri: Option[String], returnNino: Option[String] = None) = {
     (mockAuthConnector.authorise(_: Predicate, _: GrantAccessRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", nino.getOrElse(""))), "Activated", None) and CredentialStrength(CredentialStrength.strong), grantAccessRetrievals, *, *)
-      .returning(Future.successful(returnNino and confLevel and userDetailsUri))
+      .returning(Future.successful(returnNino and confLevel))
   }
 
   "Authorisation getAccounts" should {
@@ -158,7 +157,6 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
       val authority = await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       authority.nino.value shouldBe testNino
       authority.cl.level shouldBe 200
-      authority.authId shouldBe "user-details"
     }
 
     "error with unauthorised when account has low CL" in {

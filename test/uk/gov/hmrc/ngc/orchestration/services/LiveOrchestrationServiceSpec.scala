@@ -136,7 +136,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
   }
 
-  type GrantAccess = Option[String] ~ ConfidenceLevel ~ Option[String]
+  type GrantAccess = Option[String] ~ ConfidenceLevel
   def stubAuthorisationGrantAccess(response: GrantAccess)(implicit authConnector: AuthConnector): OngoingStubbing[Future[GrantAccess]] = {
     when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GrantAccess]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
@@ -176,7 +176,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, TestData.testState)
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val json: String = """{
                           |  "device": {
                           |    "osVersion": "10.3.3",
@@ -203,7 +203,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, TestData.testState)
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val json: String = """{
                    |  "device": {
                    |    "osVersion": "10.3.3",
@@ -230,7 +230,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, TestData.testState)
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val json: String = """{
                    |  "device": {
                    |    "osVersion": "10.3.3",
@@ -257,7 +257,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
       stubGETGenericConnectorFailure(taxSummarySubmissionState, 404)
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
@@ -274,7 +274,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditSummary(nino), TestData.taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, TestData.testState)
       stubPOSTGenericConnectorFailure(pushRegistration, 400)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
@@ -293,7 +293,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, TestData.testState)
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
@@ -310,7 +310,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, TestData.testState)
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(Json.obj()), None)
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
@@ -327,7 +327,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns a success response from 'deskpro-feedback' generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse("/deskpro/feedback", Json.obj("ticket_id" → 1980683879))
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -339,7 +339,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns a failure response from deskpro-feedback generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorFailure("/deskpro/feedback", 500)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -351,7 +351,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns multiple failure responses from deskpro-feedback generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorFailure("/deskpro/feedback", 500)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val feedbackRequest_1 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_1" → "Some feedback data A")))
       val feedbackRequest_2 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_2" → "Some feedback data B")))
       val feedbackRequest_3 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_3" → "Some feedback data C")))
@@ -368,7 +368,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response3: JsObject = Json.obj("ticket_id" → 333333333)
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorSuccessAndFailureResponse("/deskpro/feedback", 3, 500, response1, response2, response3)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val feedbackRequest_1 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_1" → "Some feedback data A")))
       val feedbackRequest_2 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_2" → "Some feedback data B")))
       val feedbackRequest_3 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_3" → "Some feedback data C")))
@@ -384,7 +384,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns response of failure with a timeout flag set when a GatewayTimeoutException occurs executing the generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorFailure("/deskpro/feedback", 504)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -396,7 +396,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns a success response from push-notification-get-message generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(pushNotificationGetMessage, Json.parse("""{"id":"msg-some-id","subject":"Weather","body":"Is it raining?","responses":{"yes":"Yes","no":"No"}}"""))
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val pushNotificationGetMessageRequest = ExecutorRequest(name = "push-notification-get-message", data = Some(Json.obj("messageId" → pushNotificationMessageId)))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(pushNotificationGetMessageRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -408,7 +408,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns a success response from push-notification-respond-to-message generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(pushNotificationResponseToMessage, Json.obj())
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val pushNotificationGetMessageRequest = ExecutorRequest(name = "push-notification-respond-to-message", data = Some(Json.obj("messageId" → pushNotificationMessageId)))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(pushNotificationGetMessageRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -423,7 +423,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
       stubGETGenericConnectorResponse(taxCreditsBarCode, Json.parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}"""))
       stubGETGenericConnectorResponse(claimantDetails(nino), (responseJson \\ "secondCall").head)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -439,7 +439,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
       stubGETGenericConnectorFailure(taxCreditsBarCode, 500)
       stubGETGenericConnectorResponse(claimantDetails(nino), (responseJson \\ "secondCall").head)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -456,7 +456,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
       stubGETGenericConnectorResponse(taxCreditsBarCode, Json.parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}"""))
       stubGETGenericConnectorFailure(claimantDetails(nino), 500)
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -469,7 +469,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "returns a success response from version-check generic service" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(versionCheck, Json.obj("upgrade" → false))
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val versionRequest = ExecutorRequest(name = "version-check", data = Some(Json.obj("os" → "ios or android", "version" → "n.n.n")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(versionRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
@@ -480,7 +480,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "returns a success response from audit event request generic executor" in new mocks {
       stubHostAndPortGenericConnector()
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val auditEventRequest = ExecutorRequest(name = "ngc-audit-event",
         data = Some(Json.obj("nino" → nino,
         "generatedAt" → "2017-09-12T08:35:49.340Z",
@@ -497,7 +497,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "successfully execute a mixture of service and event requests" in new mocks {
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(deskproFeedback, Json.obj("ticket_id" → 1980683879))
-      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200 and Some("creds"))
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val auditEventRequest = ExecutorRequest(name = "ngc-audit-event",
         data = Some(Json.obj("nino" → nino,
           "generatedAt" → "2017-09-12T08:35:49.340Z",

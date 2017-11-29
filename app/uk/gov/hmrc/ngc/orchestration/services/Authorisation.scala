@@ -18,8 +18,6 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
-import uk.gov.hmrc.auth.core.AffinityGroup.Individual
-import uk.gov.hmrc.auth.core.AuthProvider.GovernmentGateway
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.retrieve.{GGCredId, ~}
@@ -31,7 +29,7 @@ import uk.gov.hmrc.ngc.orchestration.domain.Accounts
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class Authority(nino:Nino, cl:ConfidenceLevel, authId:String)
+case class Authority(nino:Nino, cl:ConfidenceLevel)
 
 trait Confidence {
   val confLevel: Int
@@ -59,17 +57,17 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
     lazy val lowConfidenceLevel = new AccountWithLowCL("The user does not have sufficient CL permissions to access this service")
 
     authorised(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", requestedNino.value)), "Activated", None) and CredentialStrength(CredentialStrength.strong))
-      .retrieve(nino and confidenceLevel and userDetailsUri) {
-      case Some(nino) ~ confidenceLevel ~ Some(userDetailsUri) ⇒ {
-        if(nino.isEmpty) throw ninoNotFoundOnAccount
-        if(!nino.equals(requestedNino.nino)) throw failedToMatchNino
-        if(confLevel > confidenceLevel.level) throw lowConfidenceLevel
-        Future(Authority(Nino(nino), confidenceLevel, userDetailsUri))
+      .retrieve(nino and confidenceLevel) {
+        case Some(nino) ~ confidenceLevel ⇒ {
+          if (nino.isEmpty) throw ninoNotFoundOnAccount
+          if (!nino.equals(requestedNino.nino)) throw failedToMatchNino
+          if (confLevel > confidenceLevel.level) throw lowConfidenceLevel
+          Future(Authority(Nino(nino), confidenceLevel))
+        }
+        case None ~ _ ⇒ {
+          throw ninoNotFoundOnAccount
+        }
       }
-      case None ~ confidenceLevel ~ Some(userDetailsUri) ⇒ {
-        throw ninoNotFoundOnAccount
-      }
-    }
   }
 
   private def twoFactorRequired(credentialStrength: Option[String]) = {
