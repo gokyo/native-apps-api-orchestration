@@ -1,6 +1,8 @@
 package stubs
 
 import com.github.tomakehurst.wiremock.client.WireMock._
+import com.github.tomakehurst.wiremock.stubbing.StubMapping
+import play.api.libs.json.{JsObject, JsString, Json}
 
 /**
   * Design notes
@@ -18,13 +20,18 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 object AuthStub {
 
   def authorisedWithStrongCredentials(nino: String): Unit = {
-    authoriseWithNoPredicatesWillReturn200(nino, credentialStrengthToReturn = "strong")
+    authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "strong")
     authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "strong")
   }
 
   def authorisedWithWeakCredentials(nino: String): Unit = {
-    authoriseWithNoPredicatesWillReturn200(nino, credentialStrengthToReturn = "weak")
+    authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "weak")
     authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "weak")
+  }
+
+  def authorisedWithStrongCredentialsAndNoNino(): Unit = {
+    authoriseWithNoPredicatesWillReturn200(nino = None, credentialStrengthToReturn = "weak")
+    authorisedWithNinoPredicateWillReturn401()
   }
 
   def notAuthorised(): Unit = {
@@ -33,7 +40,7 @@ object AuthStub {
         .withStatus(401)))
   }
 
-  private def authoriseWithNoPredicatesWillReturn200(nino: String, credentialStrengthToReturn: String): Unit = {
+  private def authoriseWithNoPredicatesWillReturn200(nino: Option[String], credentialStrengthToReturn: String): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
         .withRequestBody(equalToJson(
           """
@@ -53,18 +60,20 @@ object AuthStub {
           false))
       .willReturn(aResponse()
         .withStatus(200)
-        .withBody(
-          s"""
-            |{
-            |  "nino": "$nino",
-            |  "affinityGroup": "Individual",
-            |  "authProviderId": {
-            |    "ggCredId": "Some-Cred-Id"
-            |  },
-            |  "credentialStrength": "$credentialStrengthToReturn",
-            |  "confidenceLevel": 200
-            |}
-          """.stripMargin)))
+        .withBody(addNinoIfDefined(
+          Json.obj(
+            "affinityGroup" -> "Individual",
+            "authProviderId" -> Json.obj(
+              "ggCredId" -> "Some-Cred-Id"
+            ),
+            "credentialStrength" -> credentialStrengthToReturn,
+            "confidenceLevel" -> 200
+          ),
+          nino).toString)))
+  }
+
+  private def addNinoIfDefined(input: JsObject, maybeNino: Option[String]): JsObject = {
+    maybeNino.fold(input)(nino => input + ("nino" -> JsString(nino)))
   }
 
   private def authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino: String, predicateCredentialStrength: String): Unit = {
@@ -113,7 +122,7 @@ object AuthStub {
           """.stripMargin)))
   }
 
-  private def authorisedWithNinoPredicateWillReturn401(priority: Int): Unit = {
+  private def authorisedWithNinoPredicateWillReturn401(priority: Int = StubMapping.DEFAULT_PRIORITY): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .atPriority(priority)
       .withRequestBody(equalToJson(
@@ -131,8 +140,7 @@ object AuthStub {
            |    }
            |  ]
            |}
-        """.
-          stripMargin,
+        """.stripMargin,
         true,
         true))
       .willReturn(aResponse()

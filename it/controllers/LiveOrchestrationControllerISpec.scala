@@ -390,5 +390,23 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (pollResponse.json \ "taxSummary").asOpt[JsObject] shouldBe None
       (pollResponse.json \ "taxCreditSummary").asOpt[JsObject] shouldBe None
     }
+
+    // Is this too much of a corner case for integration testing?
+    // We already have a unit test for this in AuthorisationSpec."Authorisation grantAccess" should "fail to return authority when no NINO exists"
+    "return a http 401 status when /auth/authorise does not include a NINO in its response" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      authorisedWithStrongCredentialsAndNoNino()
+
+      val pollResponse = pollForResponse(nino, headerThatSucceeds)
+      pollResponse.status shouldBe 401
+      (pollResponse.json \ "taxSummary").asOpt[JsObject] shouldBe None
+      (pollResponse.json \ "taxCreditSummary").asOpt[JsObject] shouldBe None
+    }
   }
 }
