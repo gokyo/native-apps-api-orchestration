@@ -169,7 +169,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
   "LiveOrchestrationService.startup" should {
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
-      "'/income/$nino/tax-credits/tax-credits-decision' endpoint throws 400 exception" in new mocks {
+      "'/income/:nino/tax-credits/tax-credits-decision' endpoint throws 400 exception" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 400)
@@ -196,7 +196,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
-      "'/income/$nino/tax-credits/tax-credits-decision' endpoint throws 404 exception" in new mocks {
+      "'/income/:nino/tax-credits/tax-credits-decision' endpoint throws 404 exception" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
@@ -223,7 +223,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
-      "'/income/$nino/tax-credits/tax-credits-decision' endpoint throws 401 exception" in new mocks {
+      "'/income/:nino/tax-credits/tax-credits-decision' endpoint throws 401 exception" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
@@ -284,8 +284,8 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       (response \\ "campaigns").size shouldBe 1
     }
 
-    "return empty taxSummary attribute when '/income/$nino/tax-summary/$year' service endpoint returns non 200 response " +
-      "and an empty taxCreditSummary and no related Campaigns when '/income/$nino/tax-credits/tax-credits-summary' " +
+    "return empty taxSummary attribute when '/income/:nino/tax-summary/$year' service endpoint returns non 200 response " +
+      "and an empty taxCreditSummary and no related Campaigns when '/income/:nino/tax-credits/tax-credits-summary' " +
       "service endpoint returns non 200 response" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorFailure(taxSummary(nino, 2017), 400)
