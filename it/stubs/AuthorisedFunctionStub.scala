@@ -36,10 +36,10 @@ object AuthorisedFunctionStub {
           """.stripMargin)))
   }
 
-  def authorisedFunctionFailsWithStatus(status: Int) = {
+  def authoriseWillReturnNotUnauthorised(): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .willReturn(aResponse()
-        .withStatus(status)))
+        .withStatus(401)))
   }
 
 }

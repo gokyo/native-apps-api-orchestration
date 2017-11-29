@@ -115,7 +115,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authorisedFunctionFailsWithStatus(401)
+      authoriseWillReturnNotUnauthorised()
       versionCheckSucceeds(upgrade = false)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -371,6 +371,24 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.obj()
       (pollResponse.json \ "state"\ "enableRenewals").as[Boolean] shouldBe true
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
+    }
+  }
+
+  "GET of /native-app/:nino/poll" should {
+    "return a http 401 status when /auth/authorise returns 401" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      authoriseWillReturnNotUnauthorised()
+
+      val pollResponse = pollForResponse(nino, headerThatSucceeds)
+      pollResponse.status shouldBe 401
+      (pollResponse.json \ "taxSummary").asOpt[JsObject] shouldBe None
+      (pollResponse.json \ "taxCreditSummary").asOpt[JsObject] shouldBe None
     }
   }
 }
