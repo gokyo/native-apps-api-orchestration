@@ -4,7 +4,7 @@ import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, post, stubFor
 
 object AuthorisedFunctionStub {
 
-  def authorisedFunctionSucceeds(nino : String, confidenceLevel: Int = 200, credentialStrength: String = "strong"): Unit = {
+  def authorisedFunctionSucceeds(nino: String, credentialStrength: String = "strong"): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .willReturn(aResponse()
         .withStatus(200)
@@ -17,12 +17,12 @@ object AuthorisedFunctionStub {
             |    "ggCredId": "Some-Cred-Id"
             |  },
             |  "credentialStrength": "$credentialStrength",
-            |  "confidenceLevel": $confidenceLevel
+            |  "confidenceLevel": 200
             |}
           """.stripMargin)))
   }
 
-  def authorisedFunctionGrantAccessSucceeds(nino: String, confidenceLevel: Int = 200, userDetailsUri: String = "strong") = {
+  def authorisedFunctionGrantAccessSucceeds(nino: String): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .willReturn(aResponse()
         .withStatus(200)
@@ -30,8 +30,8 @@ object AuthorisedFunctionStub {
           s"""
              |{
              |  "nino": "$nino",
-             |  "userDetailsUri": "$userDetailsUri",
-             |  "confidenceLevel": $confidenceLevel
+             |  "userDetailsUri": "/test-user-details",
+             |  "confidenceLevel": 200
              |}
           """.stripMargin)))
   }
