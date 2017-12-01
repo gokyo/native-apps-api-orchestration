@@ -156,7 +156,6 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
       mockAuthGrantAccess(Some(testNino), ConfidenceLevel.L200, Some("user-details"), Some(testNino))
       val authority = await(authorisation(mockAuthConnector).grantAccess(Nino(testNino)))
       authority.nino.value shouldBe testNino
-      authority.cl.level shouldBe 200
     }
 
     "error with unauthorised when account has low CL" in {

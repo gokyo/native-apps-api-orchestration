@@ -29,7 +29,7 @@ import uk.gov.hmrc.ngc.orchestration.domain.Accounts
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
-case class Authority(nino:Nino, cl:ConfidenceLevel)
+case class Authority(nino: Nino)
 
 trait Confidence {
   val confLevel: Int
@@ -62,7 +62,7 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
           if (nino.isEmpty) throw ninoNotFoundOnAccount
           if (!nino.equals(requestedNino.nino)) throw failedToMatchNino
           if (confLevel > confidenceLevel.level) throw lowConfidenceLevel
-          Future(Authority(Nino(nino), confidenceLevel))
+          Future(Authority(Nino(nino)))
         }
         case None ~ _ ⇒ {
           throw ninoNotFoundOnAccount
