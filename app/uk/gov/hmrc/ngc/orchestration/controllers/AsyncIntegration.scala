@@ -39,7 +39,6 @@ trait AsyncMvcIntegration extends AsyncMVC[AsyncResponse] {
 
   protected def actorSystem: ActorSystem
   protected def lifecycle: ApplicationLifecycle
-  protected def playExecutionContext: ExecutionContext = defaultContext
 
   val actorName = "async_native-apps-api-actor"
   override def id = "async_native-apps-api-id"
