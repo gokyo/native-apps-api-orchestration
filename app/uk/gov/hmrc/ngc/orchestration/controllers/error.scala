@@ -38,8 +38,6 @@ case object MandatoryResponse extends ErrorResponse(500, "MANDATORY", "Mandatory
 
 case object ForbiddenAccess extends ErrorResponse(403, "UNAUTHORIZED", "Access denied!")
 
-case object ErrorUnauthorizedMicroService extends ErrorResponse(401, "UNAUTHORIZED", "Unauthorized to access resource")
-
 case object ErrorUnauthorizedWeakCredStrength extends ErrorResponse(401, "WEAK_CRED_STRENGTH", "Credential Strength on account does not allow access")
 
 class BadRequestException(message:String) extends uk.gov.hmrc.http.HttpException(message, 400)
@@ -69,10 +67,6 @@ trait ErrorHandling {
       case ex:BadRequestException ⇒
         log("BadRequest!")
         Status(ErrorBadRequest.httpStatusCode)(Json.toJson(ErrorBadRequest))
-
-      case ex: uk.gov.hmrc.http.Upstream4xxResponse ⇒
-        Logger.info("Unauthorised! Failed to grant access since 4xx response!")
-        Unauthorized(Json.toJson(ErrorUnauthorizedMicroService))
 
       case ex: NinoNotFoundOnAccount ⇒
         Logger.info("Unauthorised! NINO not found on account!")
