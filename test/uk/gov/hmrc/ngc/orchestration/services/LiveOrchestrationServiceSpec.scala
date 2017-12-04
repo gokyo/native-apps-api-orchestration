@@ -19,6 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.services
 import java.util.UUID
 
 import org.mockito.ArgumentMatchers
+import org.mockito.ArgumentMatchers.{any, eq => eqs}
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.{Answer, OngoingStubbing}
@@ -156,13 +157,15 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
   "LiveOrchestrationService.preFlight" should {
 
-    "return the response with default value when version-check fails" in new mocks {
+    "return the default value for upgradeRequired when version-check fails" in new mocks {
 
       val getAccountsResponse: GetAccounts = Some(nino) and None and Some(Individual) and GGCredId("some-cred-id") and Some("strong") and ConfidenceLevel.L200
       stubAuthorisationGetAccounts(getAccountsResponse)
       stubPOSTGenericConnectorFailure(s"$versionCheck$journeyId", 500)
+      when(mockMFAIntegration.mfaDecision(any[Accounts], eqs(None), any[Option[String]])(any[HeaderCarrier]))
+        .thenReturn(Future successful Some(MFAAPIResponse(routeToTwoFactor = false, mfa = None, authUpdated = false)))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
-      val response = await(liveOrchestrationService.preFlightCheck(PreFlightRequest(os = "ios or android", version = "n.n.n", None ), Some(randomUUID)))
+      val response = await(liveOrchestrationService.preFlightCheck(PreFlightRequest(os = "ios or android", version = "n.n.n", None), Some(randomUUID)))
       response.upgradeRequired shouldBe false
     }
   }
@@ -267,7 +270,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       (response \\ "campaigns").size shouldBe 1
     }
 
-    "response data is not effected by a failure to execute push-registration service" in new mocks {
+    "response data is not affected by a failure to execute push-registration service" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse(taxSummary(nino, 2017), TestData.taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), TestData.testTaxCreditDecision)
@@ -303,7 +306,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       (response \\ "campaigns").size shouldBe 0
     }
 
-    "return taxCreditSummary empty JSON when the tax-credit-summary service returns a non 200 response + not invoke PushReg when payload is empty" in new mocks {
+    "return taxCreditSummary empty JSON + not invoke PushReg when the tax-credit-summary service returns a non 200 response" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorFailure(taxSummary(nino, 2017), 400)
       stubGETGenericConnectorResponse(taxCreditDecision(nino), TestData.testTaxCreditDecision)

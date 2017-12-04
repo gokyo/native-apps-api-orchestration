@@ -100,9 +100,18 @@ class MFAIntegration @Inject()(
   final val VALIDATE_URL = "/validateMFAoutcome"  // The URL returned from MFA web journeys which indicates the trigger to end wen journey and validate outcome.
   final val NGC_APPLICATION = "NGC"
 
-  def states(implicit hc:HeaderCarrier) = List(ServiceState(MFARequest.START, start), ServiceState(MFARequest.OUTCOME, outcome))
+  private def states(implicit hc:HeaderCarrier) = List(ServiceState(MFARequest.START, start), ServiceState(MFARequest.OUTCOME, outcome))
 
-  def verifyMFAStatus(mfa:MFARequest, accounts:Accounts, journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MFAAPIResponse] = {
+  def mfaDecision(accounts:Accounts, mfa: Option[MFARequest], journeyId: Option[String])(implicit hc: HeaderCarrier) : Future[Option[MFAAPIResponse]] = {
+    def mfaNotRequired = Future.successful(Option.empty[MFAAPIResponse])
+    if (!accounts.routeToTwoFactor)
+      mfaNotRequired
+    else mfa.fold(mfaNotRequired) { mfa ⇒
+      verifyMFAStatus(mfa, accounts, journeyId).map(item ⇒ Some(item))
+    }
+  }
+
+  private def verifyMFAStatus(mfa:MFARequest, accounts:Accounts, journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MFAAPIResponse] = {
 
     def search(searchState:String): PartialFunction[ServiceState, ServiceState] = {
       case found@ServiceState(state, _ ) if state == searchState => found
@@ -118,7 +127,7 @@ class MFAIntegration @Inject()(
     }
   }
 
-  def mfaStart(accounts:Accounts, journeyId:Option[String])(implicit hc:HeaderCarrier) = {
+  def mfaStart(accounts:Accounts, journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MfaURI] = {
 
     val journeyRequest = JourneyRequest(accounts.credId, VALIDATE_URL, NGC_APPLICATION, accounts.affinityGroup, "api",
       Some(VALIDATE_URL), scopes)
@@ -146,7 +155,7 @@ class MFAIntegration @Inject()(
             _ ← updateCredStrength()(hc)
             bearerToken ← exchangeForBearer(accounts.credId)
             _  ← updateMainAuthority(bearerToken)
-          } yield (MFAAPIResponse(routeToTwoFactor = false, None, authUpdated = true))
+          } yield MFAAPIResponse(routeToTwoFactor = false, None, authUpdated = true)
         }
         case "UNVERIFIED" ⇒ {
           mfaStart(accounts, journeyId).map(r ⇒ MFAAPIResponse(routeToTwoFactor = true, Some(r), authUpdated = false))
@@ -161,18 +170,18 @@ class MFAIntegration @Inject()(
     }
   }
 
-  def mfaAPI(path:String)(implicit hc:HeaderCarrier) = {
+  private def mfaAPI(path:String)(implicit hc:HeaderCarrier) = {
     genericConnector.doGet("multi-factor-authentication", path, hc)
       .map { response =>
         response.asOpt[JourneyResponse].getOrElse(throw new IllegalArgumentException("Failed to build MfaURI"));
       }
   }
 
-  def start(accounts:Accounts)(mfa:MFARequest)(journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MFAAPIResponse] = {
+  private def start(accounts:Accounts)(mfa:MFARequest)(journeyId:Option[String])(implicit hc:HeaderCarrier): Future[MFAAPIResponse] = {
     mfaStart(accounts, journeyId).map { mfaResponse => MFAAPIResponse(routeToTwoFactor = true, Some(mfaResponse), authUpdated = false)}
   }
 
-  def outcome(accounts:Accounts)(mfa:MFARequest)(journeyId:Option[String])(implicit hc:HeaderCarrier) = {
+  private def outcome(accounts:Accounts)(mfa:MFARequest)(journeyId:Option[String])(implicit hc:HeaderCarrier) = {
     mfaValidateOutcome(accounts, mfa.apiURI.getOrElse(throw new IllegalArgumentException("Failed to obtain URI!")), journeyId)
   }
 

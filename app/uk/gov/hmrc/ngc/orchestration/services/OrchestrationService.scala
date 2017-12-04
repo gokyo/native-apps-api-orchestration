@@ -74,7 +74,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     withAudit("preFlightCheck", Map.empty) {
       for {
         accounts <- getAccounts(journeyId)
-        mfaOutcome <- mfaDecision(accounts, request.mfa, journeyId)
+        mfaOutcome <- mfaIntegration.mfaDecision(accounts, request.mfa, journeyId)
         versionUpdate <- getVersion(journeyId, request.os, request.version)
       } yield {
         val mfaURI: Option[MfaURI] = mfaOutcome.fold(Option.empty[MfaURI]){ _.mfa}
@@ -129,15 +129,6 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     }
   }
 
-
-  private def mfaDecision(accounts:Accounts, mfa: Option[MFARequest], journeyId: Option[String])(implicit hc: HeaderCarrier) : Future[Option[MFAAPIResponse]] = {
-    def mfaNotRequired = Future.successful(Option.empty[MFAAPIResponse])
-    if (!accounts.routeToTwoFactor)
-      mfaNotRequired
-    else mfa.fold(mfaNotRequired) { mfa ⇒
-      mfaIntegration.verifyMFAStatus(mfa, accounts, journeyId).map(item ⇒ Some(item))
-    }
-  }
 
   private def getVersion(journeyId: Option[String], os: String, version: String)(implicit hc: HeaderCarrier) = {
     def buildJourney = journeyId.fold("")(id ⇒ s"?journeyId=$id")
