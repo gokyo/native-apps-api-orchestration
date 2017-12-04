@@ -34,9 +34,9 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
 
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
 
-    bind(classOf[AuthConnector]).to(classOf[ConcreteAuthConnector])
+    bind(classOf[AuthConnector]).to(classOf[MicroserviceAuthConnector])
 
-    bind(classOf[AuditConnector]).toInstance(NextGenAuditConnector)
+    bind(classOf[AuditConnector]).toInstance(MicroserviceAuditConnector)
 
     bindConfigInt("supported.generic.service.max")
     bindConfigInt("supported.generic.event.max")

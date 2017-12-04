@@ -20,7 +20,7 @@ import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.{Configuration, Logger, LoggerLike, Play}
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier}
-import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
+import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.AuditExtensions._
@@ -206,7 +206,7 @@ case class PushNotificationRespondToMessageExecutor(genericConnector: GenericCon
   override def connector = genericConnector
 }
 
-case class AuditEventExecutor(audit: Audit = new Audit("native-apps", NextGenAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
+case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
 
   override val executorName: String = "ngc-audit-event"
   override val executionType: String = "EVENT"

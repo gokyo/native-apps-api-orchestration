@@ -32,8 +32,7 @@ import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.repository.{AsyncMongoRepository, AsyncRepository}
-import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
-import uk.gov.hmrc.ngc.orchestration.controllers.live.GenericServiceCheck
+import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.services.{Result => _, _}
 import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.asyncmvc.model.AsyncMvcSession
@@ -192,5 +191,5 @@ class LiveOrchestrationController  @Inject()(
 
   override val app: String = "Live-Orchestration-Controller"
   override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.mongoConnector.db)
-  override val auditConnector: AuditConnector = NextGenAuditConnector
+  override val auditConnector: AuditConnector = MicroserviceAuditConnector
 }

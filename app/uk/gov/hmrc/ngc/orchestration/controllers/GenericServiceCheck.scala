@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-package uk.gov.hmrc.ngc.orchestration.controllers.live
+package uk.gov.hmrc.ngc.orchestration.controllers
 
 import play.api.libs.json.JsSuccess
 import play.api.mvc.{AnyContent, Request}
-import play.api.{Configuration, Play, mvc}
+import play.api.{Play, mvc}
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.ngc.orchestration.controllers.{BadRequestException, LiveOrchestrationController, NativeAppsOrchestrationController}
 import uk.gov.hmrc.ngc.orchestration.domain.{ExecutorRequest, OrchestrationRequest}
 import uk.gov.hmrc.ngc.orchestration.services.OrchestrationServiceRequest
 
@@ -39,7 +38,7 @@ trait GenericServiceCheck {
           val request = success.get
           if (invalid(verifyServiceName, request.serviceRequest).size > 0 || invalid(verifyEventName, request.eventRequest).size > 0) {
             Future.failed(new BadRequestException("Request not supported"))
-          } else if (evaluateMaxRequests(request)) {
+          } else if (maxRequestsExceeded(request)) {
             Future.failed(new BadRequestException("Max Calls Exceeded"))
           } else if (!request.serviceRequest.isDefined && !request.eventRequest.isDefined) {
             Future.failed(new BadRequestException("Nothing to execute"))
@@ -52,7 +51,7 @@ trait GenericServiceCheck {
     }
   }
 
-  private def evaluateMaxRequests(request: OrchestrationRequest) :Boolean = {
+  private def maxRequestsExceeded(request: OrchestrationRequest) :Boolean = {
     request.serviceRequest.map{serviceMax < _.size}.getOrElse(false) || request.eventRequest.map(eventMax < _.size).getOrElse(false)
   }
 

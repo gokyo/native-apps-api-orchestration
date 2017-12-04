@@ -33,12 +33,6 @@ import scala.util.{Failure, Success, Try}
 
 case class MFAAPIResponse(routeToTwoFactor:Boolean, mfa:Option[MfaURI], authUpdated:Boolean)
 
-object MFAAPIResponse {
-  implicit val mfaFormat = MfaURI
-  implicit val format = Json.format[MFAAPIResponse]
-}
-
-
 case class MFARequest(operation:String, apiURI:Option[String])
 
 case class ServiceState(state:String, func: Accounts => MFARequest => Option[String] => Future[MFAAPIResponse])

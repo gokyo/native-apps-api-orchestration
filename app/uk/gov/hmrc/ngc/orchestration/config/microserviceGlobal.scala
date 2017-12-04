@@ -47,7 +47,7 @@ object AuthParamsControllerConfiguration extends AuthParamsControllerConfig {
 
 object MicroserviceAuditFilter extends AuditFilter with AppName with MicroserviceFilterSupport {
 
-  override val auditConnector = NextGenAuditConnector
+  override val auditConnector = MicroserviceAuditConnector
 
   override def controllerNeedsAuditing(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsAuditing
 }
@@ -58,7 +58,7 @@ object MicroserviceLoggingFilter extends LoggingFilter with MicroserviceFilterSu
 
 object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with ServiceLocatorConfig with ServiceLocatorRegistration {
 
-  override val auditConnector: AuditConnector = NextGenAuditConnector
+  override val auditConnector: AuditConnector = MicroserviceAuditConnector
 
   override def microserviceMetricsConfig(implicit app: Application): Option[Configuration] = app.configuration.getConfig("microservice.metrics")
 

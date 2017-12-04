@@ -26,7 +26,7 @@ import play.api.mvc.{Action, AnyContent, BodyParsers, Cookie}
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.msasync.repository.AsyncRepository
-import uk.gov.hmrc.ngc.orchestration.config.NextGenAuditConnector
+import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.services.{PreFlightRequest, SandboxOrchestrationService}
 import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -99,6 +99,6 @@ class SandboxOrchestrationControllerImpl @Inject()(
   @Named("supported.generic.service.max") override val serviceMax: Int,
   @Named("supported.generic.event.max") override val eventMax: Int,
   @Named("controllers.confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
-  val auditConnector: AuditConnector = NextGenAuditConnector
+  val auditConnector: AuditConnector = MicroserviceAuditConnector
   override val maxAgeForSuccess: Int = 14400
 }

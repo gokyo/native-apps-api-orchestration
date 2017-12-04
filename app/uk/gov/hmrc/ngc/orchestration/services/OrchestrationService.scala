@@ -27,7 +27,7 @@ import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.ngc.orchestration.config.{ConfiguredCampaigns, NextGenAuditConnector}
+import uk.gov.hmrc.ngc.orchestration.config.{ConfiguredCampaigns, MicroserviceAuditConnector}
 import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
@@ -159,7 +159,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
 class SandboxOrchestrationService @Inject() (override val genericConnector: GenericConnector)
   extends OrchestrationService with FileResource with ExecutorFactory {
 
-  override val auditConnector = NextGenAuditConnector
+  override val auditConnector = MicroserviceAuditConnector
 
   val cache: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
 
