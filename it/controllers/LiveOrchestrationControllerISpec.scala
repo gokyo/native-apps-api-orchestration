@@ -41,7 +41,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
   private def withCookieHeader(response: HttpResponse): Seq[(String, String)] = {
     Seq(HeaderNames.COOKIE → response.allHeaders.getOrElse("Set-Cookie", throw new Exception("NO COOKIE FOUND")).head)
   }
-  private def gimmeUniqueToken: String = UUID.randomUUID().toString
+  private def gimmeUniqueToken(): String = UUID.randomUUID().toString
   private def pollForResponse(nino: String, headerWithCookie: Seq[(String, String)]): HttpResponse = {
     eventually {
       val result = await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
@@ -259,7 +259,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "$gimmeUniqueToken"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -296,7 +296,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "$gimmeUniqueToken"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -327,7 +327,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "$gimmeUniqueToken"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -357,7 +357,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "$gimmeUniqueToken"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
