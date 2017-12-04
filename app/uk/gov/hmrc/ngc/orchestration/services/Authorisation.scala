@@ -71,7 +71,7 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
   }
 
   private def twoFactorRequired(credentialStrength: Option[String]) = {
-    !(credentialStrength.getOrElse("").equals(CredentialStrength.strong))
+    !credentialStrength.contains(CredentialStrength.strong)
   }
 
 
