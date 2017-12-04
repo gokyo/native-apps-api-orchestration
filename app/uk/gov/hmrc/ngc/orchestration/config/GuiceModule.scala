@@ -16,7 +16,7 @@
 
 package uk.gov.hmrc.ngc.orchestration.config
 
-import com.google.inject.AbstractModule
+import com.google.inject.{AbstractModule, TypeLiteral}
 import com.google.inject.name.Names
 import play.api.Mode.Mode
 import play.api.{Configuration, Environment}
@@ -44,6 +44,8 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
     bindConfigInt("controllers.confidenceLevel")
 
     bindConfigInt("poll.success.maxAge")
+
+    bindConfigStringSeq("scopes")
   }
 
   /**
@@ -53,5 +55,12 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
   private def bindConfigInt(path: String): Unit = {
     bindConstant().annotatedWith(Names.named(path))
       .to(configuration.underlying.getInt(path))
+  }
+
+  private def bindConfigStringSeq(path: String): Unit = {
+    val configValue: Seq[String] = configuration.getStringSeq(path).getOrElse(throw new RuntimeException(s"""Config property "$path" missing"""))
+    bind[Seq[String]](new TypeLiteral[Seq[String]] {})
+      .annotatedWith(Names.named(path))
+      .toInstance(configValue)
   }
 }

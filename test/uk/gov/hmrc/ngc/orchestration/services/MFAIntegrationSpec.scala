@@ -23,7 +23,6 @@ import org.mockito.ArgumentMatchers.{any, anyString, eq => eqs}
 import org.mockito.Mockito.when
 import org.mockito.stubbing.OngoingStubbing
 import org.scalatest.mockito.MockitoSugar
-import play.api.Configuration
 import play.api.libs.json.{JsValue, Json}
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
@@ -49,7 +48,6 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
   implicit val hc: HeaderCarrier = HeaderCarrier()
 
   val mockGenericConnector: GenericConnector = mock[GenericConnector]
-  val mockConfiguration: Configuration = mock[Configuration]
   val host = "localhost"
   val port = 33333
   val nino = "CS700100A"
@@ -59,13 +57,13 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
   val mfaAuthenticatedJourney = "/multi-factor-authentication/authenticatedJourney"
   val mfaApiURI = "/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"
 
-  def stubConfiguration(): OngoingStubbing[Option[Seq[String]]] = when(mockConfiguration.getStringSeq(eqs("scopes")))
-    .thenReturn(Some(Seq( "read:personal-income",
-                          "read:customer-profile",
-                          "read:messages",
-                          "read:submission-tracker",
-                          "read:web-session",
-                          "read:native-apps-api-orchestration")))
+  val scopes = Seq(
+    "read:personal-income",
+    "read:customer-profile",
+    "read:messages",
+    "read:submission-tracker",
+    "read:web-session",
+    "read:native-apps-api-orchestration")
 
   def stubHostAndPortGenericConnector()(implicit genericConnector: GenericConnector): OngoingStubbing[Int] = {
     when(genericConnector.host(anyString())).thenReturn(host)
@@ -113,10 +111,9 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                                |  }
                                |}
                              """.stripMargin)
-      stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, expectedResponse)
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("start", None)
       val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
@@ -125,8 +122,7 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
     }
 
     "return bad request when the MFA operation supplied is invalid" in new mocks {
-      stubConfiguration()
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("INVALID_OPERATION", None)
       intercept[BadRequestException] {
@@ -153,11 +149,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                                                          |}
                                                        """.stripMargin)
       val expectedResponse = Json.toJson(JourneyResponse("","",None,"","","",false,None,None,"UNVERIFIED",DateTime.now))
-      stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
       val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
@@ -178,10 +173,9 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                                                          |  }
                                                          |}
                                                        """.stripMargin)
-      stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", None)
       intercept[BadRequestException] {
@@ -204,11 +198,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                                                          |}
                                                        """.stripMargin)
       val expectedResponse = Json.toJson(JourneyResponse("","",None,"","","",false,None,None,"NOT_REQUIRED",DateTime.now))
-      stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
       val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
@@ -229,11 +222,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                                                          |}
                                                        """.stripMargin)
       val expectedResponse = Json.toJson(JourneyResponse("","",None,"","","",false,None,None,"SKIPPED",DateTime.now))
-      stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
       val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
@@ -255,11 +247,10 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
                                                          |}
                                                        """.stripMargin)
       val expectedResponse = Json.toJson(JourneyResponse("","",None,"","","",false,None,None,"VERIFIED",DateTime.now))
-      stubConfiguration()
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
-      val mfaIntegration = new MFAIntegration(mockGenericConnector, mockConfiguration)
+      val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, false, false, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
       val response = await(mfaIntegration.verifyMFAStatus(mfaRequest, testAccount, Some(journeyId)))
