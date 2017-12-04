@@ -14,21 +14,17 @@
  * limitations under the License.
  */
 
-import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
+package uk.gov.hmrc.ngc.orchestration.controllers
+
 import org.scalatest.mockito.MockitoSugar
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsValue, Json}
-import play.api.test.FakeRequest
+import play.api.test.{FakeRequest, PlayRunners}
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.ngc.orchestration.controllers.LiveOrchestrationController
-import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
+import uk.gov.hmrc.play.test.UnitSpec
 
-class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplication with MockitoSugar with FileResource {
-
-  implicit val system = ActorSystem("test-system")
-  implicit val materializer = ActorMaterializer()
+class GenericOrchestrationControllerSpec extends UnitSpec with MockitoSugar with FileResource with PlayRunners {
 
   val token = "Bearer 123456789"
 
@@ -42,47 +38,42 @@ class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplicati
         .configure("metrics.enabled" → false)
         .build()
 
-      val controller = application.injector.instanceOf[LiveOrchestrationController]
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/version-check-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
+      running(application) {
+        val controller = application.injector.instanceOf[LiveOrchestrationController]
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/version-check-request.json").get)
+        val fakeRequest = FakeRequest().withSession(
+          "AuthToken" -> "Some Header"
+        ).withHeaders(
+          "Authorization" -> "Some Header"
+        ).withJsonBody(request)
 
-      val result = await(controller.orchestrate(Nino("AB123456C"), Option("unique-journey-id")).apply(fakeRequest))
-      status(result) shouldBe 406
+        val result = await(controller.orchestrate(Nino("AB123456C"), Option("unique-journey-id")).apply(fakeRequest))
+        status(result) shouldBe 406
+      }
     }
 
     "return bad request when the service name supplied is unknown" in {
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/invalid-service-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
 
       val application = new GuiceApplicationBuilder()
         .configure("metrics.enabled" → false)
         .build()
 
-      val controller = application.injector.instanceOf[LiveOrchestrationController]
-      val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
-      status(result) shouldBe 400
+      running(application) {
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/invalid-service-request.json").get)
+        val fakeRequest = FakeRequest().withSession(
+          "AuthToken" -> "Some Header"
+        ).withHeaders(
+          "Accept" -> "application/vnd.hmrc.1.0+json",
+          "Authorization" -> "Some Header"
+        ).withJsonBody(request)
+
+        val controller = application.injector.instanceOf[LiveOrchestrationController]
+        val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
+        status(result) shouldBe 400
+      }
     }
 
     "should fail to execute if the number of services exceeds the max service config" in {
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/max-service-calls-exceeded-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
 
       val application = new GuiceApplicationBuilder()
         .configure("supported.generic.service.version-check.on" → true)
@@ -90,21 +81,23 @@ class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplicati
         .configure("metrics.enabled" → false)
         .build()
 
-      val controller = application.injector.instanceOf[LiveOrchestrationController]
-      val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
-      status(result) shouldBe 400
+      running(application) {
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/max-service-calls-exceeded-request.json").get)
+
+        val fakeRequest = FakeRequest().withSession(
+          "AuthToken" -> "Some Header"
+        ).withHeaders(
+          "Accept" -> "application/vnd.hmrc.1.0+json",
+          "Authorization" -> "Some Header"
+        ).withJsonBody(request)
+
+        val controller = application.injector.instanceOf[LiveOrchestrationController]
+        val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
+        status(result) shouldBe 400
+      }
     }
 
     "should fail to execute if the number of events exceeds the max event config" in {
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/max-event-calls-exceeded-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
 
       val application = new GuiceApplicationBuilder()
         .configure("supported.generic.event.ngc-audit-event.on" → true)
@@ -112,49 +105,64 @@ class GenericOrchestrationControllerSpec extends UnitSpec with WithFakeApplicati
         .configure("metrics.enabled" → false)
         .build()
 
-      val controller = application.injector.instanceOf[LiveOrchestrationController]
-      val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
-      status(result) shouldBe 400
+      running(application) {
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/max-event-calls-exceeded-request.json").get)
+
+        val fakeRequest = FakeRequest().withSession(
+          "AuthToken" -> "Some Header"
+        ).withHeaders(
+          "Accept" -> "application/vnd.hmrc.1.0+json",
+          "Authorization" -> "Some Header"
+        ).withJsonBody(request)
+
+        val controller = application.injector.instanceOf[LiveOrchestrationController]
+        val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
+        status(result) shouldBe 400
+      }
     }
 
     "should successfully execute if the number of events to execute is less than or equal to the max event config" in {
 
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/max-event-calls-exceeded-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "SuccessMaxEvents"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Bearer 234342hh23"
-      ).withJsonBody(request)
-
       val application = new GuiceApplicationBuilder()
         .configure("metrics.enabled" → false)
         .build()
 
-      val controller = application.injector.instanceOf[LiveOrchestrationController]
-      val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
-      status(result) shouldBe 200
+      running(application) {
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/max-event-calls-exceeded-request.json").get)
+
+        val fakeRequest = FakeRequest().withSession(
+          "AuthToken" -> "SuccessMaxEvents"
+        ).withHeaders(
+          "Accept" -> "application/vnd.hmrc.1.0+json",
+          "Authorization" -> "Bearer 234342hh23"
+        ).withJsonBody(request)
+
+        val controller = application.injector.instanceOf[LiveOrchestrationController]
+        val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
+        status(result) shouldBe 200
+      }
     }
 
     "should successfully execute if the number of services to execute is less than or equal to the max service config" in {
 
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/max-service-calls-exceeded-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "SuccessServiceMax"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Bearer 1020202020"
-      ).withJsonBody(request)
-
       val application = new GuiceApplicationBuilder()
         .configure("metrics.enabled" → false)
         .build()
 
-      val controller = application.injector.instanceOf[LiveOrchestrationController]
-      val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
-      status(result) shouldBe 200
+      running(application) {
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/max-service-calls-exceeded-request.json").get)
+
+        val fakeRequest = FakeRequest().withSession(
+          "AuthToken" -> "SuccessServiceMax"
+        ).withHeaders(
+          "Accept" -> "application/vnd.hmrc.1.0+json",
+          "Authorization" -> "Bearer 1020202020"
+        ).withJsonBody(request)
+
+        val controller = application.injector.instanceOf[LiveOrchestrationController]
+        val result = await(controller.orchestrate(Nino("CS700100A"), Option("unique-journey-id")).apply(fakeRequest))
+        status(result) shouldBe 200
+      }
     }
   }
 }
