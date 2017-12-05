@@ -19,7 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.connectors
 import javax.inject.Inject
 
 import com.google.inject.Singleton
-import play.api.libs.json.JsValue
+import play.api.libs.json.{JsValue, Writes}
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
@@ -43,10 +43,10 @@ class GenericConnector @Inject() (configuration: Configuration) {
     http.GET[JsValue](buildUrl(host(serviceName), port(serviceName), path))
   }
 
-  def doPost(json:JsValue, serviceName:String, path:String, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
+  def doPost[T](json:JsValue, serviceName:String, path:String, hc: HeaderCarrier)(implicit wts: Writes[T], rds: HttpReads[T], ec: ExecutionContext): Future[T] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     logHC(hc, s"transport: HC received is ${hc.authorization} for path $path")
-    http.POST[JsValue, JsValue](buildUrl(host(serviceName), port(serviceName), path), json)
+    http.POST[JsValue, T](buildUrl(host(serviceName), port(serviceName), path), json)
   }
 
   def doGetRaw(serviceName:String, path:String, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[HttpResponse] = {

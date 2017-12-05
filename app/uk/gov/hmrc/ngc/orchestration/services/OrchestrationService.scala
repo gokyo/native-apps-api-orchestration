@@ -134,7 +134,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     def buildJourney = journeyId.fold("")(id ⇒ s"?journeyId=$id")
     val device = DeviceVersion(os, version)
     val path = s"/profile/native-app/version-check$buildJourney"
-    genericConnector.doPost(Json.toJson(device), "customer-profile", path, hc).map {
+    genericConnector.doPost[JsValue](Json.toJson(device), "customer-profile", path, hc).map {
       resp ⇒ (resp \ "upgrade").as[Boolean]
     }.recover{
       // Default to false - i.e. no upgrade required.

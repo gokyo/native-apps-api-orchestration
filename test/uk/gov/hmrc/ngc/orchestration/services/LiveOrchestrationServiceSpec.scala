@@ -18,8 +18,7 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
-import org.mockito.ArgumentMatchers
-import org.mockito.ArgumentMatchers.{any, eq => eqs}
+import org.mockito.ArgumentMatchers.{any, anyString, eq ⇒ eqs}
 import org.mockito.Mockito._
 import org.mockito.invocation.InvocationOnMock
 import org.mockito.stubbing.{Answer, OngoingStubbing}
@@ -79,27 +78,27 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
   def claimantDetails(nino: String): String = s"/income/$nino/tax-credits/claimant-details$journeyId"
 
   def stubHostAndPortGenericConnector()(implicit genericConnector: GenericConnector): OngoingStubbing[Int] = {
-    when(genericConnector.host(ArgumentMatchers.anyString())).thenReturn(host)
-    when(genericConnector.port(ArgumentMatchers.anyString())).thenReturn(port)
+    when(genericConnector.host(anyString())).thenReturn(host)
+    when(genericConnector.port(anyString())).thenReturn(port)
   }
   def stubGETGenericConnectorResponse(path: String, response: JsValue)(implicit genericConnector: GenericConnector): OngoingStubbing[Future[JsValue]] = {
-    when(genericConnector.doGet(ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    when(genericConnector.doGet(anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
       .thenReturn(Future(response))
   }
 
   def stubGETGenericConnectorFailure(path: String, status: Int)(implicit genericConnector: GenericConnector): Any = {
     if(status >= 400 && status < 500) {
-      when(genericConnector.doGet(ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+      when(genericConnector.doGet(anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream4xxResponse("", status, status)))
     }
     if(status == 500){
-      when(genericConnector.doGet(ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+      when(genericConnector.doGet(anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream5xxResponse("", status, status)))
     }
   }
 
   def stubPOSTGenericConnectorResponse(path: String, response: JsValue)(implicit genericConnector: GenericConnector): OngoingStubbing[Future[JsValue]] = {
-    when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    when(genericConnector.doPost[JsValue](any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
@@ -118,39 +117,39 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
         }
       }
     }
-    when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+    when(genericConnector.doPost[JsValue](any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
       .thenAnswer(answer)
   }
 
   def stubPOSTGenericConnectorFailure(path: String, status: Int)(implicit genericConnector: GenericConnector): Any = {
     if(status >= 400 && status < 500) {
-      when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream4xxResponse("", status, status)))
     }
     if(status == 500){
-      when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream5xxResponse("", status, status)))
     }
     if(status == 504){
-      when(genericConnector.doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq[String](path), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
         .thenReturn(Future.failed(new GatewayTimeoutException("")))
     }
   }
 
   type GrantAccess = Option[String] ~ ConfidenceLevel
   def stubAuthorisationGrantAccess(response: GrantAccess)(implicit authConnector: AuthConnector): OngoingStubbing[Future[GrantAccess]] = {
-    when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GrantAccess]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+    when(authConnector.authorise(any[Predicate](), any[Retrieval[GrantAccess]]())(any[HeaderCarrier](), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
   type GetAccounts = Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ LegacyCredentials ~ Option[String] ~ ConfidenceLevel
   def stubAuthorisationGetAccounts(response: GetAccounts)(implicit authConnector: AuthConnector) = {
-    when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GetAccounts]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+    when(authConnector.authorise(any[Predicate](), any[Retrieval[GetAccounts]]())(any[HeaderCarrier](), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
   def stubAuthorisationGetAccountsFailure(status: Int)(implicit authConnector: AuthConnector) = {
-    when(authConnector.authorise(ArgumentMatchers.any[Predicate](), ArgumentMatchers.any[Retrieval[GetAccounts]]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]()))
+    when(authConnector.authorise(any[Predicate](), any[Retrieval[GetAccounts]]())(any[HeaderCarrier](), any[ExecutionContext]()))
       .thenReturn(Future.failed(Upstream4xxResponse("", 400, 400)))
   }
 
@@ -322,7 +321,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 0
       verify(mockGenericConnector, times(0))
-        .doPost(ArgumentMatchers.any[JsValue](), ArgumentMatchers.anyString(), ArgumentMatchers.eq(pushRegistration), ArgumentMatchers.any[HeaderCarrier]())(ArgumentMatchers.any[ExecutionContext]())
+        .doPost(any[JsValue](), anyString(), eqs(pushRegistration), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]())
     }
   }
 
@@ -493,7 +492,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
-      verify(mockAuditConnector, times(1)).sendEvent(ArgumentMatchers.any[DataEvent]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]())
+      verify(mockAuditConnector, times(1)).sendEvent(any[DataEvent]())(any[HeaderCarrier](), any[ExecutionContext]())
       Json.stringify(response) shouldBe """{"OrchestrationResponse":{"eventResponse":[{"name":"ngc-audit-event","failure":false}]}}"""
     }
 
@@ -511,7 +510,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
       val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
-      verify(mockAuditConnector, times(1)).sendEvent(ArgumentMatchers.any[DataEvent]())(ArgumentMatchers.any[HeaderCarrier](), ArgumentMatchers.any[ExecutionContext]())
+      verify(mockAuditConnector, times(1)).sendEvent(any[DataEvent]())(any[HeaderCarrier](), any[ExecutionContext]())
       Json.stringify(response) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","responseData":{"ticket_id":1980683879},"failure":false}],"eventResponse":[{"name":"ngc-audit-event","failure":false}]}}"""
     }
   }

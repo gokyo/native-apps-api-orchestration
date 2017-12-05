@@ -20,9 +20,9 @@ import javax.inject.Named
 
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
+import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
@@ -92,10 +92,7 @@ case class AuthExchangeResponse(access_token: BearerToken,
                                 authority_uri: Option[String] = None)
 
 @Singleton
-class MFAIntegration @Inject()(
-  genericConnector: GenericConnector,
-  @Named("scopes") scopes: Seq[String]
-) {
+class MFAIntegration @Inject() (genericConnector: GenericConnector, @Named("scopes") scopes: Seq[String]) {
 
   final val VALIDATE_URL = "/validateMFAoutcome"  // The URL returned from MFA web journeys which indicates the trigger to end wen journey and validate outcome.
   final val NGC_APPLICATION = "NGC"
@@ -132,7 +129,7 @@ class MFAIntegration @Inject()(
     val journeyRequest = JourneyRequest(accounts.credId, VALIDATE_URL, NGC_APPLICATION, accounts.affinityGroup, "api",
       Some(VALIDATE_URL), scopes)
 
-    genericConnector.doPost(Json.toJson(journeyRequest), "multi-factor-authentication", "/multi-factor-authentication/authenticatedJourney", hc)
+    genericConnector.doPost[JsValue](Json.toJson(journeyRequest), "multi-factor-authentication", "/multi-factor-authentication/authenticatedJourney", hc)
       .map { response =>
         val mfaApi = response.asOpt[MfaURI].getOrElse(throw new IllegalArgumentException(s"Failed to build MfaURI $response! for $journeyId"))
         if (mfaApi.apiURI.isEmpty || mfaApi.webURI.isEmpty) throw new IllegalArgumentException(s"URLs found to be empty $response for $journeyId!")
@@ -188,7 +185,7 @@ class MFAIntegration @Inject()(
   private def updateCredStrength()(implicit hc: HeaderCarrier): Future[Unit] = {Future(Unit)}
 
   private def exchangeForBearer(credId: String)(implicit hc: HeaderCarrier): Future[AuthExchangeResponse] = {
-    Future(AuthExchangeResponse(BearerToken("", DateTime.now), 1000))
+    genericConnector.doPost[AuthExchangeResponse](Json.obj(), "auth", s"/auth/gg/$credId/exchange", hc)
   }
 
 }

@@ -56,7 +56,7 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
     executionType.toUpperCase match {
       case POST =>
         val postData = data.getOrElse(throw new Exception("No Post Data Provided!"))
-        val result = connector.doPost(postData, serviceName, path(journeyId, nino, data), hc)
+        val result = connector.doPost[JsValue](postData, serviceName, path(journeyId, nino, data), hc)
         result.map { response =>
           Some(ExecutorResponse(executorName, Option(response), cacheTime, Some(false)))
         }

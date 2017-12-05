@@ -78,7 +78,7 @@ case class PushRegistration(connector: GenericConnector, inputRequest:JsValue, j
       Logger.info(s"${logJourneyId(journeyId)} - No token supplied!")
     } else {
       // Note: Fire and forget!
-      connector.doPost(inputRequest, serviceName, s"/push/registration${buildJourneyQueryParam(journeyId)}", hc)
+      connector.doPost[JsValue](inputRequest, serviceName, s"/push/registration${buildJourneyQueryParam(journeyId)}", hc)
     }
     Future.successful(None)
   }

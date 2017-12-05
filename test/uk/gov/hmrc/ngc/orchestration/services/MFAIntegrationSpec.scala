@@ -19,7 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.services
 import java.util.UUID
 
 import org.joda.time.DateTime
-import org.mockito.ArgumentMatchers.{any, anyString, eq => eqs}
+import org.mockito.ArgumentMatchers.{any, anyString, eq ⇒ eqs}
 import org.mockito.Mockito.when
 import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.{JsValue, Json}
@@ -74,23 +74,28 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
   }
 
   def stubPOSTGenericConnectorResponse(path: String, response: JsValue)(implicit genericConnector: GenericConnector): Unit = {
-    when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
+    when(genericConnector.doPost[JsValue](any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
   }
 
   def stubPOSTGenericConnectorFailure(path: String, status: Int)(implicit genericConnector: GenericConnector): Any = {
     if(status >= 400 && status < 500) {
-      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream4xxResponse("", status, status)))
     }
     if(status == 500) {
-      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
         .thenReturn(Future.failed(Upstream5xxResponse("", status, status)))
     }
     if(status == 504) {
-      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any[ExecutionContext]()))
+      when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
         .thenReturn(Future.failed(new GatewayTimeoutException("")))
     }
+  }
+
+  def stubBearerTokenExchange()(implicit genericConnector: GenericConnector) = {
+    when(genericConnector.doPost[AuthExchangeResponse](any[JsValue], anyString(), eqs[String]("/auth/gg/some-cred-id/exchange"), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
+      .thenReturn(Future.successful(new AuthExchangeResponse(access_token = new BearerToken(UUID.randomUUID().toString, DateTime.now().plusDays(1)), 10000)))
   }
 
 
@@ -173,8 +178,6 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
     }
 
   }
-
-
 
   "MFAIntegration with outcome request" should {
 
@@ -296,13 +299,13 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubHostAndPortGenericConnector()
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
+      stubBearerTokenExchange()
       val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, routeToIV = false, routeToTwoFactor = true, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
       val response = await(mfaIntegration.mfaDecision(testAccount, Some(mfaRequest), Some(journeyId)))
       response.value.routeToTwoFactor shouldBe false
     }
-
   }
 
   // remove implicit
