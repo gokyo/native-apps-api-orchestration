@@ -16,6 +16,7 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
+import org.mockito.Mockito
 import org.scalatest.mockito.MockitoSugar
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsValue, Json}
@@ -40,7 +41,7 @@ class GenericOrchestrationControllerSpec extends UnitSpec with MockitoSugar with
 
       running(application) {
         val controller = application.injector.instanceOf[LiveOrchestrationController]
-        val request: JsValue = Json.parse(findResource(s"/resources/generic/version-check-request.json").get)
+        val request: JsValue = Json.parse(findResource(s"/resources/generic/feedback-request.json").get)
         val fakeRequest = FakeRequest().withSession(
           "AuthToken" -> "Some Header"
         ).withHeaders(
