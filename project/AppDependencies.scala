@@ -19,7 +19,7 @@ object AppDependencies {
   private val scalaTestVersion = "3.0.4"
   private val wireMockVersion = "2.9.0"
   private val scalaTestPlusVersion = "2.0.1"
-  private val scalaMockVersion = "3.6.0"
+  private val scalaMockVersion = "4.0.0"
 
   val compile = Seq(
     ws,
@@ -46,7 +46,7 @@ object AppDependencies {
         "org.pegdown" % "pegdown" % pegdownVersion % scope,
         "com.typesafe.play" %% "play-test" % PlayVersion.current % scope,
         "org.mockito" % "mockito-core" % mockitoVersion % scope,
-        "org.scalamock" %% "scalamock-scalatest-support" % scalaMockVersion % scope
+        "org.scalamock" %% "scalamock" % scalaMockVersion % scope
 
       )
     }.test
