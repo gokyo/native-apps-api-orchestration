@@ -18,10 +18,9 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
-import play.api.Logger
 import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
-import uk.gov.hmrc.auth.core.retrieve.{GGCredId, ~}
+import uk.gov.hmrc.auth.core.retrieve.~
 import uk.gov.hmrc.domain.{Nino, SaUtr}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.controllers.{AccountWithLowCL, FailToMatchTaxIdOnAuth, NinoNotFoundOnAccount}

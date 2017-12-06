@@ -50,7 +50,7 @@ object AuthStub {
             |    "nino",
             |    "saUtr",
             |    "affinityGroup",
-            |    "authProviderId",
+            |    "credentials",
             |    "credentialStrength",
             |    "confidenceLevel"
             |  ]
@@ -62,9 +62,10 @@ object AuthStub {
         .withStatus(200)
         .withBody(addNinoIfDefined(
           Json.obj(
-            "affinityGroup" -> "Individual",
-            "authProviderId" -> Json.obj(
-              "ggCredId" -> "Some-Cred-Id"
+            "affinityGroup" → "Individual",
+            "credentials" → Json.obj(
+              "providerId" → "Some-Cred-Id",
+              "providerType" → "GovernmentGateway"
             ),
             "credentialStrength" -> credentialStrengthToReturn,
             "confidenceLevel" -> 200

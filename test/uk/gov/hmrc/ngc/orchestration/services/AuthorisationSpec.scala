@@ -42,11 +42,11 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
   val testSaUtr: String = "1872796160"
   val mockAuthConnector: AuthConnector = mock[AuthConnector]
 
-  type AccountsRetrieval = Retrieval[Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ LegacyCredentials ~ Option[String] ~ ConfidenceLevel]
+  type AccountsRetrieval = Retrieval[Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ Credentials ~ Option[String] ~ ConfidenceLevel]
 
   type GrantAccessRetrieval = Retrieval[Option[String] ~ ConfidenceLevel]
 
-  val accountsRetrievals = nino and saUtr and affinityGroup and authProviderId and credentialStrength and confidenceLevel
+  val accountsRetrievals = nino and saUtr and affinityGroup and credentials and credentialStrength and confidenceLevel
 
   val grantAccessRetrievals = nino and confidenceLevel
 
@@ -58,11 +58,11 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
   }
 
   def authoriseWillAllowAccessForEmptyPredicate(authConnector: AuthConnector, nino: Option[String], saUtr: Option[String], affinityGroup: Option[AffinityGroup],
-                          authProviderId: LegacyCredentials,credStrength: Option[String],
+                                                credentials: Credentials, credStrength: Option[String],
                           confLevel: ConfidenceLevel) = {
     (authConnector.authorise(_: Predicate, _: AccountsRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(EmptyPredicate, accountsRetrievals, *, *)
-      .returning(Future.successful(nino and saUtr and affinityGroup and authProviderId and credStrength and confLevel))
+      .returning(Future.successful(nino and saUtr and affinityGroup and credentials and credStrength and confLevel))
   }
 
   def authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(nino: Option[String], confLevel: ConfidenceLevel, returnNino: Option[String]) = {
@@ -73,7 +73,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
 
   "Authorisation getAccounts" should {
     "find the user and routeToIV and routeToTwoFactor should be true" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L50)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), Credentials("some-cred-id", "GovernmentGateway"), Some("weak"), ConfidenceLevel.L50)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -85,7 +85,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "find the user and routeToIV is false when L200 confidence level and routeToTwoFactor is true" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), Credentials("some-cred-id", "GovernmentGateway"), Some("weak"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -97,7 +97,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "find the user and routeToIV and routeToTwoFactor should be false when credential strength is 'string' and confidence is L200" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), Credentials("some-cred-id", "GovernmentGateway"), Some("strong"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -109,7 +109,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "find the user with an account with no nino" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, None, Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("weak"), ConfidenceLevel.L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, None, Some(testSaUtr), Some(AffinityGroup.Individual), Credentials("some-cred-id", "GovernmentGateway"), Some("weak"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
@@ -121,7 +121,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "ignore the supplied journeyId when blank" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), Credentials("some-cred-id", "GovernmentGateway"), Some("strong"), ConfidenceLevel.L200)
       val emptyJourneyId = ""
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(emptyJourneyId)))
       accounts.credId shouldBe "some-cred-id"
@@ -135,7 +135,7 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
     }
 
     "generates new journeyId when no journeyId supplied" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), GGCredId("some-cred-id"), Some("strong"), ConfidenceLevel.L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), Some(testSaUtr), Some(AffinityGroup.Individual), Credentials("some-cred-id", "GovernmentGateway"), Some("strong"), ConfidenceLevel.L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(None))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"

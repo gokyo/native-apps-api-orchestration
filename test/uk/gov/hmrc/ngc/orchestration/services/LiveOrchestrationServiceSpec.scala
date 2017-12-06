@@ -27,7 +27,7 @@ import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.authorise.Predicate
-import uk.gov.hmrc.auth.core.retrieve.{GGCredId, LegacyCredentials, Retrieval, ~}
+import uk.gov.hmrc.auth.core.retrieve._
 import uk.gov.hmrc.auth.core.syntax.retrieved._
 import uk.gov.hmrc.auth.core.{AffinityGroup, AuthConnector, ConfidenceLevel}
 import uk.gov.hmrc.domain.Nino
@@ -142,7 +142,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       .thenReturn(Future.successful(response))
   }
 
-  type GetAccounts = Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ LegacyCredentials ~ Option[String] ~ ConfidenceLevel
+  type GetAccounts = Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ Credentials ~ Option[String] ~ ConfidenceLevel
   def stubAuthorisationGetAccounts(response: GetAccounts)(implicit authConnector: AuthConnector) = {
     when(authConnector.authorise(any[Predicate](), any[Retrieval[GetAccounts]]())(any[HeaderCarrier](), any[ExecutionContext]()))
       .thenReturn(Future.successful(response))
@@ -158,7 +158,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "return the default value for upgradeRequired when version-check fails" in new mocks {
 
-      val getAccountsResponse: GetAccounts = Some(nino) and None and Some(Individual) and GGCredId("some-cred-id") and Some("strong") and ConfidenceLevel.L200
+      val getAccountsResponse: GetAccounts = Some(nino) and None and Some(Individual) and Credentials("some-cred-id", "GovernmentGateway") and Some("strong") and ConfidenceLevel.L200
       stubAuthorisationGetAccounts(getAccountsResponse)
       stubPOSTGenericConnectorFailure(s"$versionCheck$journeyId", 500)
       when(mockMFAIntegration.mfaDecision(any[Accounts], eqs(None), any[Option[String]])(any[HeaderCarrier]))
