@@ -3,7 +3,7 @@ package controllers
 import org.joda.time.LocalDate
 import org.scalatest.concurrent.Eventually._
 import play.api.http.{HeaderNames, MimeTypes}
-import play.api.libs.json.{JsValue, Json}
+import play.api.libs.json.Json
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.http.HttpResponse
 import utils.{BaseISpec, Resource}

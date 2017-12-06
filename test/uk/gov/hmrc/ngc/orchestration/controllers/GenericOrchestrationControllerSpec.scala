@@ -16,7 +16,6 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
-import org.mockito.Mockito
 import org.scalatest.mockito.MockitoSugar
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.libs.json.{JsValue, Json}
