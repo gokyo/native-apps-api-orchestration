@@ -238,6 +238,22 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))(Duration(40, TimeUnit.SECONDS))
       response.status shouldBe 500
     }
+
+    "generate a unique journeyId if no journeyId is provided" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      registrationWillSucceed()
+      authorisedWithStrongCredentials(nino)
+      versionCheckSucceeds(upgrade = true)
+      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
+      val response = await(new Resource("/native-app/preflight-check", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 200
+      (response.json \ "upgradeRequired" ).as[Boolean] shouldBe true
+      (response.json \ "accounts" \ "nino" ).as[String] shouldBe nino
+      (response.json \ "accounts" \ "routeToIV" ).as[Boolean] shouldBe false
+      (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
+      (response.json \ "accounts" \ "journeyId" ).as[String].length > 0 shouldBe true
+    }
   }
 
   "POST of /native-app/:nino/startup with GET of /native-app/:nino/poll" should {
