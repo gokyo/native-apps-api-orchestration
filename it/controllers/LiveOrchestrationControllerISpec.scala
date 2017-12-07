@@ -254,6 +254,17 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
       (response.json \ "accounts" \ "journeyId" ).as[String].length > 0 shouldBe true
     }
+
+    "return a 401 when the authProvider is not GovernmentGateway" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      registrationWillSucceed()
+      authorisedWithStrongCredentialsAndNotGovernmentGateway(nino)
+      versionCheckSucceeds(upgrade = true)
+      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
+      val response = await(new Resource("/native-app/preflight-check", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 401
+    }
   }
 
   "POST of /native-app/:nino/startup with GET of /native-app/:nino/poll" should {

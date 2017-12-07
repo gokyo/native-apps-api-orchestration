@@ -34,13 +34,18 @@ object AuthStub {
     authorisedWithNinoPredicateWillReturn401()
   }
 
+  def authorisedWithStrongCredentialsAndNotGovernmentGateway(nino: String): Unit = {
+    authoriseWithNoPredicatesWillReturn200(nino = None, credentialStrengthToReturn = "weak", "Not_Government_Gateway")
+    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "strong")
+  }
+
   def notAuthorised(): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
       .willReturn(aResponse()
         .withStatus(401)))
   }
 
-  private def authoriseWithNoPredicatesWillReturn200(nino: Option[String], credentialStrengthToReturn: String): Unit = {
+  private def authoriseWithNoPredicatesWillReturn200(nino: Option[String], credentialStrengthToReturn: String, providerType: String = "GovernmentGateway"): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
         .withRequestBody(equalToJson(
           """
@@ -65,7 +70,7 @@ object AuthStub {
             "affinityGroup" → "Individual",
             "credentials" → Json.obj(
               "providerId" → "Some-Cred-Id",
-              "providerType" → "GovernmentGateway"
+              "providerType" → providerType
             ),
             "credentialStrength" -> credentialStrengthToReturn,
             "confidenceLevel" -> 200

@@ -147,6 +147,13 @@ class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTes
       accounts.journeyId should not be None
       accounts.journeyId.length should not equal 0
     }
+
+    "throws an UnsupportedAuthProvider AuthorisationException if the AuthProvider is not GovernmentGateway" in {
+      intercept[UnsupportedAuthProvider] {
+        authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(AffinityGroup.Individual), Credentials("some-cred-id", "Not_Government_Gateway"), Some("strong"), ConfidenceLevel.L200)
+        await(authorisation(mockAuthConnector).getAccounts(None))
+      }
+    }
   }
 
   "Authorisation grantAccess" should {

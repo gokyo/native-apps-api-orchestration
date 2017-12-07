@@ -45,6 +45,7 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
       case nino ~ saUtr ~ affinityGroup ~ credentials ~ credentialStrength ~ confidenceLevel ⇒ {
         val routeToIV = confLevel > confidenceLevel.level
         val journeyIdentifier = journeyId.filter(id ⇒ id.length > 0).getOrElse(UUID.randomUUID().toString)
+        if (credentials.providerType != "GovernmentGateway") throw new UnsupportedAuthProvider
         Future(Accounts(nino.map(Nino(_)), saUtr.map(SaUtr(_)), routeToIV, twoFactorRequired(credentialStrength),
           journeyIdentifier, credentials.providerId, affinityGroup.get.toString()))
       }
