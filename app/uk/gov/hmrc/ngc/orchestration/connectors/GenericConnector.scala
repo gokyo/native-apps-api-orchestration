@@ -16,44 +16,52 @@
 
 package uk.gov.hmrc.ngc.orchestration.connectors
 
-import play.api.Logger
-import play.api.libs.json._
+import javax.inject.Inject
+
+import com.google.inject.Singleton
+import play.api.libs.json.{JsValue, Writes}
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.http._
 import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@Singleton
+class GenericConnector @Inject() (configuration: Configuration) {
 
-trait GenericConnector {
+  def host(serviceName: String) = getConfigProperty(serviceName, "host")
 
-  def http: CorePost with CoreGet
+  def port(serviceName: String) = getConfigProperty(serviceName, "port").toInt
 
-  private def addAPIHeaders(hc:HeaderCarrier) = hc.withExtraHeaders("Accept" -> "application/vnd.hmrc.1.0+json")
-
-  private def buildUrl(host:String, port:Int, path:String) =  s"""http://$host:$port$path"""
+  def http: CorePost with CoreGet = WSHttp
 
   def logHC(hc: HeaderCarrier, path:String) =   Logger.info(s"transport: HC received is ${hc.authorization} for path $path")
 
-
-  def doGet(host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
+  def doGet(serviceName:String, path:String, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     logHC(hc, s"transport: HC received is ${hc.authorization} for path $path")
-    http.GET[JsValue](buildUrl(host, port, path))
+    http.GET[JsValue](buildUrl(host(serviceName), port(serviceName), path))
   }
 
-  def doPost(json:JsValue, host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[JsValue] = {
+  def doPost[T](json:JsValue, serviceName:String, path:String, hc: HeaderCarrier)(implicit wts: Writes[T], rds: HttpReads[T], ec: ExecutionContext): Future[T] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     logHC(hc, s"transport: HC received is ${hc.authorization} for path $path")
-    http.POST[JsValue, JsValue](buildUrl(host, port, path), json)
+    http.POST[JsValue, T](buildUrl(host(serviceName), port(serviceName), path), json)
   }
 
-  def doGetRaw(host:String, path:String, port:Int, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[HttpResponse] = {
+  def doGetRaw(serviceName:String, path:String, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[HttpResponse] = {
     implicit val hcHeaders = addAPIHeaders(hc)
-    http.GET(buildUrl(host, port, path))
+    http.GET(buildUrl(host(serviceName), port(serviceName), path))
   }
 
-}
-
-object GenericConnector extends GenericConnector {
-  override def http = WSHttp
+  private def addAPIHeaders(hc:HeaderCarrier) = hc.withExtraHeaders("Accept" -> "application/vnd.hmrc.1.0+json")
+  private def buildUrl(host:String, port:Int, path:String) =  s"""http://$host:$port$path"""
+  private def getConfigProperty(serviceName: String, property: String): String = {
+    getServiceConfig(serviceName).getString(property)
+      .getOrElse(throw new Exception(s"No service configuration found for $serviceName"))
+  }
+  private def getServiceConfig(serviceName: String): Configuration = {
+    configuration.getConfig(s"microservice.services.$serviceName")
+      .getOrElse(throw new Exception(s"No micro services configured for $serviceName"))
+  }
 }

@@ -3,6 +3,8 @@ package controllers
 import org.joda.time.LocalDate
 import org.scalatest.concurrent.Eventually._
 import play.api.http.{HeaderNames, MimeTypes}
+import play.api.libs.json.Json
+import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.http.HttpResponse
 import utils.{BaseISpec, Resource}
 
@@ -48,6 +50,29 @@ class SandboxOrchestrationControllerISpec extends BaseISpec {
       }
       pollResponse.status shouldBe 200
       (pollResponse.json \\ "taxSummary") shouldNot(be(empty))
+    }
+
+    "successfully switch to sandbox startup with poll mimicking the live controllers asynchronous response of the startup call " +
+    "returning sandbox data for tax credit claimant-details request" in new FileResource {
+      val nino = "CS700100A"
+      val request = """{"serviceRequest":[{"name": "claimant-details"}]}"""
+
+      val expectedResponseData = Json.parse(findResource("/resources/generic/poll/claimant-details.json").get)
+      val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(request, headerThatSucceeds))
+      response.status shouldBe 200
+      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.allHeaders("Set-Cookie").head shouldNot be(empty)
+      val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
+      val pollResponse = eventually {
+        await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
+      }
+
+      pollResponse.status shouldBe 200
+      val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
+      (serviceResponse \ "name").as[String] shouldBe "claimant-details"
+      (serviceResponse \ "responseData").get shouldBe expectedResponseData
+      (serviceResponse \ "failure").as[Boolean] shouldBe false
+      (pollResponse.json \ "status").get shouldBe Json.obj("code" → "complete")
     }
   }
 

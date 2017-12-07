@@ -525,14 +525,6 @@ object TestData {
 
   def taxSummary(id:Option[String]=None) = Json.obj("taxSummary" -> taxSummaryData(id))
 
-  val campaigns = Json.obj("campaigns" -> Seq(Json.parse("""{
-                               |  "campaignId": "HELP_TO_SAVE_1",
-                               |  "enabled": true,
-                               |  "minimumViews": 4,
-                               |  "dismissDays": 43,
-                               |  "requiredData": "workingTaxCredit"
-                               |}""".stripMargin)))
-
   val submissionStateOn = Json.obj("state" -> Json.obj(
     "enableRenewals" -> true
   ))
@@ -1359,8 +1351,8 @@ object TestData {
       |    {
       |      "campaignId": "HELP_TO_SAVE_1",
       |      "enabled": true,
-      |      "minimumViews": 4,
-      |      "dismissDays": 43,
+      |      "minimumViews": 3,
+      |      "dismissDays": 30,
       |      "requiredData": "workingTaxCredit"
       |    }
       |  ],

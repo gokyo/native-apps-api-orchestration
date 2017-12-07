@@ -1,5 +1,6 @@
 package controllers
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import org.scalatest.concurrent.Eventually._
@@ -24,22 +25,29 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
   private val headerThatSucceeds = Seq(HeaderNames.CONTENT_TYPE  → MimeTypes.JSON,
                                        HeaderNames.ACCEPT        → "application/vnd.hmrc.1.0+json",
                                        HeaderNames.AUTHORIZATION → "Bearer 11111111")
-  private val headerWithoutAuthorization = headerThatSucceeds.filter{ case (name: String, _) ⇒ name != HeaderNames.AUTHORIZATION }
 
   private val journeyId = "f7a5d556-9f34-47cb-9d84-7e904f2fe704"
-  private val currentYear = TaxYear.current.currentYear toString
+  private val currentYear = TaxYear.current.currentYear.toString
 
   override protected def appBuilder: GuiceApplicationBuilder =
     super.appBuilder.configure(
-      "widget.help_to_save.enabled" -> true,
-      "widget.help_to_save.min_views" -> 5,
-      "widget.help_to_save.dismiss_days" -> 15,
-      "widget.help_to_save.required_data" -> "workingTaxCredit"
+      "widget.help_to_save.enabled" → true,
+      "widget.help_to_save.min_views" → 5,
+      "widget.help_to_save.dismiss_days" → 15,
+      "widget.help_to_save.required_data" → "workingTaxCredit"
     )
 
-  def withJourneyParam(journeyId: String) = s"journeyId=$journeyId"
-  def withCookieHeader(response: HttpResponse) = {
-    Seq(HeaderNames.COOKIE → response.allHeaders.get("Set-Cookie").getOrElse(throw new Exception("NO COOKIE FOUND")).head)
+  private def withJourneyParam(journeyId: String) = s"journeyId=$journeyId"
+  private def withCookieHeader(response: HttpResponse): Seq[(String, String)] = {
+    Seq(HeaderNames.COOKIE → response.allHeaders.getOrElse("Set-Cookie", throw new Exception("NO COOKIE FOUND")).head)
+  }
+  private def gimmeUniqueToken(): String = UUID.randomUUID().toString
+  private def pollForResponse(nino: String, headerWithCookie: Seq[(String, String)]): HttpResponse = {
+    eventually {
+      val result = await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
+      result.body should not be """{"status":{"code":"poll"}}"""
+      result
+    }
   }
 
   "POST of /native-app/preflight-check" should {
@@ -47,7 +55,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authRecordExists(nino, 200, "strong")
+      authorisedWithStrongCredentials(nino)
       versionCheckSucceeds(upgrade = true)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -62,7 +70,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authRecordExists(nino, 200, "strong")
+      authorisedWithStrongCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -77,7 +85,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authRecordExists(nino, 200, "strong")
+      authorisedWithStrongCredentials(nino)
       versionCheckUpgradeRequiredFails(400)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -92,7 +100,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authRecordExists(nino, 200, "strong")
+      authorisedWithStrongCredentials(nino)
       versionCheckUpgradeRequiredFails(500)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -104,9 +112,10 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
     }
 
     "return 401 HTTP status code when calls to retrieve the auth account fails" in {
+      val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authRecordDoesNotExist()
+      notAuthorised()
       versionCheckSucceeds(upgrade = false)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -118,7 +127,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       routeToTwoFactor
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -134,7 +143,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       mfaFailure(500)
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
@@ -145,7 +154,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
-      authRecordExists(nino)
+      authorisedWithStrongCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val invalidOperation = "BLAH"
       val postRequest = s"""{"os":"ios","version":"0.1.0","mfa":{"operation":"$invalidOperation"}}"""
@@ -158,7 +167,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       mfaOutcomeStatus("UNVERIFIED")
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val operation = "outcome"
       val postRequest = s"""{"os":"ios","version":"0.1.0","mfa":{"operation":"$operation", "apiURI": "/multi-factor-authentication/journey/58d93f54280000da005d388b"}}"""
@@ -175,7 +184,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       mfaOutcomeStatus("NOT_REQUIRED")
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val operation = "outcome"
       val postRequest = s"""{"os":"ios","version":"0.1.0","mfa":{"operation":"$operation", "apiURI": "/multi-factor-authentication/journey/58d93f54280000da005d388b"}}"""
@@ -192,7 +201,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       mfaOutcomeStatus("SKIPPED")
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val operation = "outcome"
       val postRequest = s"""{"os":"ios","version":"0.1.0","mfa":{"operation":"$operation", "apiURI": "/multi-factor-authentication/journey/58d93f54280000da005d388b"}}"""
@@ -209,7 +218,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       mfaOutcomeStatus("NOT_REQUIRED")
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val operation = "outcome"
       val postRequest = s"""{"os":"ios","version":"0.1.0","mfa":{"operation":"$operation"}}"""
@@ -222,12 +231,39 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       writeAuditSucceeds()
       registrationWillSucceed()
       mfaOutcomeStatus("Some unknown state")
-      authRecordExists(nino, credentialStrength = "weak")
+      authorisedWithWeakCredentials(nino)
       versionCheckSucceeds(upgrade = false)
       val operation = "outcome"
       val postRequest = s"""{"os":"ios","version":"0.1.0","mfa":{"operation":"$operation", "apiURI": "/multi-factor-authentication/journey/58d93f54280000da005d388b"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))(Duration(40, TimeUnit.SECONDS))
       response.status shouldBe 500
+    }
+
+    "generate a unique journeyId if no journeyId is provided" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      registrationWillSucceed()
+      authorisedWithStrongCredentials(nino)
+      versionCheckSucceeds(upgrade = true)
+      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
+      val response = await(new Resource("/native-app/preflight-check", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 200
+      (response.json \ "upgradeRequired" ).as[Boolean] shouldBe true
+      (response.json \ "accounts" \ "nino" ).as[String] shouldBe nino
+      (response.json \ "accounts" \ "routeToIV" ).as[Boolean] shouldBe false
+      (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
+      (response.json \ "accounts" \ "journeyId" ).as[String].length > 0 shouldBe true
+    }
+
+    "return a 401 when the authProvider is not GovernmentGateway" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      registrationWillSucceed()
+      authorisedWithStrongCredentialsAndNotGovernmentGateway(nino)
+      versionCheckSucceeds(upgrade = true)
+      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
+      val response = await(new Resource("/native-app/preflight-check", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
+      response.status shouldBe 401
     }
   }
 
@@ -236,20 +272,21 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       "with poll asynchronously returning the orchestrated response of the startup call" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
-      authRecordExists(nino)
+      authorisedWithStrongCredentials(nino)
       taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
-      val postRequest = """{
+      authorisedWithStrongCredentials(nino)
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -257,9 +294,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
-      val pollResponse = eventually {
-        await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
-      }
+      val pollResponse = pollForResponse(nino, headerWithCookie)
       pollResponse.status shouldBe 200
       (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
       (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.parse(taxCreditSummaryJson)
@@ -274,30 +309,29 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       "with poll asynchronously returning 401 when the Tax Summary response NINO does match the authority NINO" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
-      authRecordExists(nino)
+      authorisedWithStrongCredentials(nino)
       taxSummarySucceeds(nino, currentYear, taxSummaryJson("AB123456D"))
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
-      val postRequest = """{
+      authorisedWithStrongCredentials(nino)
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
       response.body shouldBe """{"status":{"code":"poll"}}"""
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
-      val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
+      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(response)
 
-      val pollResponse = eventually {
-        await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
-      }
+      val pollResponse = pollForResponse(nino, headerWithCookie)
       pollResponse.status shouldBe 401
     }
 
@@ -306,20 +340,21 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       val nino = "CS700100A"
       val someOtherNino = "AB123456C"
       writeAuditSucceeds()
-      authRecordExists(nino)
+      authorisedWithStrongCredentials(nino)
       taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
-      val postRequest = """{
+      authorisedWithStrongCredentials(nino)
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -327,9 +362,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
-      val pollResponse = eventually {
-        await(new Resource(s"/native-app/$someOtherNino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
-      }
+      val pollResponse = pollForResponse(someOtherNino, headerWithCookie)
       pollResponse.status shouldBe 401
     }
 
@@ -337,20 +370,21 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       "with poll asynchronously returning a taxCreditSummary attribute with no summary data when tax credit decision returns false" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
-      authRecordExists(nino)
+      authorisedWithStrongCredentials(nino)
       taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino, showData = false)
       taxCreditsSubmissionStateIsEnabled()
       pushRegistrationSucceeds()
-      val postRequest = """{
+      authorisedWithStrongCredentials(nino)
+      val postRequest = s"""{
                           |  "device": {
                           |    "osVersion": "10.3.3",
                           |    "os": "ios",
                           |    "appVersion": "4.9.0",
                           |    "model": "iPhone8,2"
                           |  },
-                          |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                          |  "token": "${gimmeUniqueToken()}"
                           |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -358,14 +392,48 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
-      val pollResponse = eventually {
-        await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
-      }
+      val pollResponse = pollForResponse(nino, headerWithCookie)
       pollResponse.status shouldBe 200
       (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
       (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.obj()
-      (pollResponse.json \ "state" \ "enableRenewals").as[Boolean] shouldBe true
+      (pollResponse.json \ "state"\ "enableRenewals").as[Boolean] shouldBe true
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
+    }
+  }
+
+  "GET of /native-app/:nino/poll" should {
+    "return a http 401 status when /auth/authorise returns 401" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      notAuthorised()
+
+      val pollResponse = pollForResponse(nino, headerThatSucceeds)
+      pollResponse.status shouldBe 401
+      (pollResponse.json \ "taxSummary").asOpt[JsObject] shouldBe None
+      (pollResponse.json \ "taxCreditSummary").asOpt[JsObject] shouldBe None
+    }
+
+    // Is this too much of a corner case for integration testing?
+    // We already have a unit test for this in AuthorisationSpec."Authorisation grantAccess" should "fail to return authority when no NINO exists"
+    "return a http 401 status when /auth/authorise does not include a NINO in its response" in {
+      val nino = "CS700100A"
+      writeAuditSucceeds()
+      taxSummarySucceeds(nino, currentYear, taxSummaryJson(nino))
+      taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
+      taxCreditsDecisionSucceeds(nino)
+      taxCreditsSubmissionStateIsEnabled()
+      pushRegistrationSucceeds()
+      authorisedWithStrongCredentialsAndNoNino()
+
+      val pollResponse = pollForResponse(nino, headerThatSucceeds)
+      pollResponse.status shouldBe 401
+      (pollResponse.json \ "taxSummary").asOpt[JsObject] shouldBe None
+      (pollResponse.json \ "taxCreditSummary").asOpt[JsObject] shouldBe None
     }
   }
 }

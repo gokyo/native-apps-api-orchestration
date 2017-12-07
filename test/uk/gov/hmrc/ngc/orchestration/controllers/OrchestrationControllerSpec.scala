@@ -16,746 +16,221 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import org.joda.time.LocalDate
-import org.scalatest.concurrent.PatienceConfiguration.{Interval, Timeout}
-import org.scalatest.concurrent.{Eventually, ScalaFutures}
-import org.scalatest.time.{Milliseconds, Seconds, Span}
+import org.joda.time.{DateTime, LocalDate}
+import org.mockito.ArgumentMatchers.any
+import org.mockito.Mockito.when
+import org.mockito.stubbing.OngoingStubbing
+import org.scalatest.concurrent.Eventually
+import org.scalatest.mockito.MockitoSugar
+import play.api.Play.current
+import play.api.http.{HeaderNames, MimeTypes}
+import play.api.inject.ApplicationLifecycle
+import play.api.libs.concurrent.Akka
 import play.api.libs.json._
-import play.api.mvc.{AnyContentAsJson, Request, Result}
+import play.api.mvc
+import play.api.mvc.{AnyContentAsEmpty, AnyContentAsJson}
+import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.test.{FakeApplication, FakeRequest}
-import uk.gov.hmrc.api.sandbox.FileResource
+import play.modules.reactivemongo.ReactiveMongoComponent
+import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.auth.core.authorise.Predicate
+import uk.gov.hmrc.auth.core.retrieve.{Retrieval, ~}
+import uk.gov.hmrc.auth.core.syntax.retrieved._
 import uk.gov.hmrc.domain.Nino
-import uk.gov.hmrc.http.{NotFoundException, Upstream4xxResponse}
+import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.msasync.repository.AsyncRepository
+import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain.{Accounts, PreFlightCheckResponse}
-import uk.gov.hmrc.play.asyncmvc.model.AsyncMvcSession
+import uk.gov.hmrc.ngc.orchestration.services._
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
-import scala.util.matching.UnanchoredRegex
+import scala.concurrent.duration.Duration
+import scala.concurrent.{ExecutionContext, Future}
+
+class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with MockitoSugar {
 
 
-
-class ConfigCheckSpec extends UnitSpec {
-  "Verify configuration loader for max-age caching" should {
-    "throw an exception if the configuration cannot be loaded" in {
-      val config = new ConfigLoad {
-        override def getConfigForPollMaxAge: Option[Long] = None
-      }
-
-      intercept[Exception] {
-        config.maxAgeForSuccess
-      }
-    }
-
-    "Return the configuration when defined" in {
-      val config = new ConfigLoad {
-        override def getConfigForPollMaxAge: Option[Long] = Some(123456789)
-      }
-
-      config.maxAgeForSuccess shouldBe 123456789
-    }
+  trait mocks {
+    implicit val mockMFAIntegration: MFAIntegration = mock[MFAIntegration]
+    implicit val mockGenericConnector: GenericConnector = mock[GenericConnector]
+    implicit val mockAuditConnector: AuditConnector = mock[AuditConnector]
+    implicit val mockAuthConnector: AuthConnector = mock[AuthConnector]
   }
-}
 
-class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with ScalaFutures with Eventually with StubApplicationConfiguration {
 
-  implicit val system = ActorSystem()
-  implicit val materializer = ActorMaterializer()
+  implicit val materializer: ActorMaterializer = ActorMaterializer()(ActorSystem())
+  implicit val hc: HeaderCarrier = HeaderCarrier()
 
-  override lazy val fakeApplication = FakeApplication(additionalConfiguration = config)
+  lazy val actorSystem: ActorSystem = Akka.system
+  lazy val lifecycle: ApplicationLifecycle = current.injector.instanceOf[ApplicationLifecycle]
+  lazy val reactiveMongo: ReactiveMongoComponent = current.injector.instanceOf[ReactiveMongoComponent]
+
+  val mockLiveOrchestrationService: LiveOrchestrationService = mock[LiveOrchestrationService]
+
+  val journeyId: String = UUID.randomUUID().toString
+  val nino = "CS700100A"
+  val requestHeaders = Seq(HeaderNames.CONTENT_TYPE → MimeTypes.JSON, HeaderNames.ACCEPT → "application/vnd.hmrc.1.0+json", HeaderNames.AUTHORIZATION → "Bearer 11111111")
+  val startupRequestWithHeader: FakeRequest[AnyContentAsJson] = FakeRequest()
+    .withHeaders(HeaderNames.CONTENT_TYPE → MimeTypes.JSON, HeaderNames.ACCEPT → "application/vnd.hmrc.1.0+json", HeaderNames.AUTHORIZATION → "Bearer 11111111")
+    .withJsonBody(Json.parse("""{
+                    |  "device": {
+                    |    "osVersion": "10.3.3",
+                    |    "os": "ios",
+                    |    "appVersion": "4.9.0",
+                    |    "model": "iPhone8,2"
+                    |  },
+                    |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                    |}""".stripMargin))
+
+  val startupRequestWithoutHeaders: FakeRequest[AnyContentAsJson] = FakeRequest()
+    .withJsonBody(Json.parse("""{
+                               |  "device": {
+                               |    "osVersion": "10.3.3",
+                               |    "os": "ios",
+                               |    "appVersion": "4.9.0",
+                               |    "model": "iPhone8,2"
+                               |  },
+                               |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
+                               |}""".stripMargin))
+
+  def mockServicePreFlightCall(response: PreFlightCheckResponse): OngoingStubbing[Future[PreFlightCheckResponse]] = {
+    when(mockLiveOrchestrationService.preFlightCheck(any[PreFlightRequest](), any[Option[String]]())(any[HeaderCarrier]()))
+      .thenReturn(Future.successful(response))
+  }
+
+  type GrantAccess = Option[String] ~ ConfidenceLevel
+  def stubAuthorisationGrantAccess(response: GrantAccess)(implicit authConnector: AuthConnector): OngoingStubbing[Future[GrantAccess]] = {
+    when(authConnector.authorise(any[Predicate](), any[Retrieval[GrantAccess]]())(any[HeaderCarrier](), any[ExecutionContext]()))
+      .thenReturn(Future.successful(response))
+  }
 
   "preFlightCheck live controller" should {
+    "return the Pre-Flight Check Response successfully" in new mocks {
 
-    "return the Pre-Flight Check Response successfully" in new Success {
-      val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
+      val expectation = PreFlightCheckResponse(upgradeRequired = true, Accounts(Some(Nino("CS700100A")), None, routeToIV = false, routeToTwoFactor = false, journeyId, "some-cred-id", "Individual"))
+      mockServicePreFlightCall(expectation)
+      val versionBody: JsValue = Json.parse("""{"os":"android", "version":"1.0.1"}""")
+      val versionRequest: FakeRequest[JsValue] = FakeRequest().withBody(versionBody).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json")
+
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "PreflightHappyPath")
+      val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))(Duration(10,TimeUnit.SECONDS))
       status(result) shouldBe 200
-      contentAsJson(result) shouldBe Json.parse("""{"upgradeRequired":true,"accounts":{"nino":"CS700100A","routeToIV":false,"routeToTwoFactor":false,"journeyId":"102030394AAA"}}""")
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-    }
-
-    "return the Pre-Flight Check Response successfully with the supplied journeyId" in new Success {
-      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe Json.parse(s"""{"upgradeRequired":true,"accounts":{"nino":"CS700100A","routeToIV":false,"routeToTwoFactor":false,"journeyId":"$journeyId"}}""")
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-    }
-
-    "return the Pre-Flight Check Response with default version when version-check fails" in new FailurePreFlight {
-      val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
-      status(result) shouldBe 200
-      contentAsJson(result) shouldBe Json.parse("""{"upgradeRequired":false,"accounts":{"nino":"CS700100A","routeToIV":false,"routeToTwoFactor":false,"journeyId":"102030394AAA"}}""")
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-    }
-
-    "return 401 HTTP status code when calls to retrieve the auth account fail" in new FailureNoAuthority {
-      val result = await(controller.preFlightCheck(None)(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))
-      status(result) shouldBe 401
-    }
-
-  }
-
-  "preFlightCheck live controller with MFA start request" should {
-
-    "return response with MFA URIs and routeToTwoFactor equal to true when cred-strength is not strong" in new SuccessMfa {
-      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithMFA().withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 200
-
-      contentAsJson(result) shouldBe Json.parse(journeyStartResponse(journeyId))
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi")
-    }
-
-    "return 500 response when the MFA service fails" in new SuccessMfa {
-      override lazy val startMfaJourney = Map("/multi-factor-authentication/journey" -> false)
-
-      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithMFA().withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 500
-    }
-
-    "return bad request when the MFA operation supplied is invalid" in new SuccessMfa {
-      val result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithMFA("invalid").withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 400
+      contentAsJson(result) shouldBe Json.toJson(expectation)
+      result.header.headers("Set-Cookie") contains "mdtpapi="
     }
   }
 
-  "preFlightCheck live controller with MFA outcome request " should {
+  "OrchestrationController.orchestrate" should {
+    "return throttle status response when throttle limit has been hit" in {
 
-    "return the response mfa URIs and routeToTwoFactor equal to true when MFA API returns UNVERIFIED state" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "UNVERIFIED"
-
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 200
-
-      contentAsJson(result) shouldBe Json.parse(journeyStartResponse(journeyId))
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-    }
-
-    "return bad request when the mfaURI is not included in the request" in new SuccessMfa {
-
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithInvalidMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 400
-      contentAsJson(result) shouldBe Json.parse("""{"code":"BAD_REQUEST","message":"Invalid POST request"}""")
-    }
-
-    "return response with routeToTwoFactor set to false when MFA returns NOT_REQUIRED state" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "NOT_REQUIRED"
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 200
-
-      contentAsJson(result) shouldBe Json.parse(preflightResponse(journeyId))
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-    }
-
-    "return response with routeToTwoFactor set to false when MFA returns SKIPPED state" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "SKIPPED"
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 200
-
-      contentAsJson(result) shouldBe Json.parse(preflightResponse(journeyId))
-    }
-
-    "return response with routeToTwoFactor set to false and authority updated with credStrength Strong when MFA returns VERIFIED state" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "VERIFIED"
-      override lazy val generateAuthError = false
-
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 200
-
-      contentAsJson(result) shouldBe Json.parse(preflightResponse(journeyId))
-      result.header.headers.get("Set-Cookie").get contains ("mdtpapi=")
-    }
-
-    "return 500 response when fail to update the authority record with strong cred-strength" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "VERIFIED"
-
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-      status(result) shouldBe 500
-    }
-
-    "return 500 response when MFA returns unknown state" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "UNKNOWN STATE!!!"
-
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-
-      status(result) shouldBe 500
-    }
-
-    "return 500 response when MFA fails to return outcome state" in new SuccessMfa {
-      override lazy val mfaOutcomeStatus = "VERIFIED"
-      override lazy val outcomeMfaJourney = Map("/multi-factor-authentication/journey/58d96846280000f7005d388e?origin=ngc" -> false)
-
-      val result = await(
-        controller.preFlightCheck(Some(
-          journeyId))(versionRequestWithMFAOutcome.withHeaders("Authorization" -> "Bearer 123456789")))
-
-
-      status(result) shouldBe 500
-    }
-
-  }
-
-  "async live controller (verify different json attribute response values based on service responses)" should {
-
-    "return 401 when the Tax Summary response NINO does match the authority NINO" in new SecurityAsyncSetup {
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.taxCreditSummaryEmpty, TestData.submissionStateOn, TestData.campaigns, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, "async_native-apps-api-id-SecurityAsyncSetup", Nino("CS700100A"),
-        jsonMatch, 401)(versionRequest)
-    }
-
-    "return 401 when the poll request NINO does not match the NINO associated in the async response" in new TestGenericController {
-      override val statusCode: Option[Int] = None
-      override val exception:Option[Exception]=Some(new NotFoundException("controlled explosion"))
-      override lazy val test_id: String = s"test_id_testOrchestrationNinoCheck_$time"
-      override val taxSummaryData: JsValue = TestData.taxSummaryData()
-      override lazy val authConnector = new TestAuthConnector(Some(Nino("CS700100A")))
-
-      override val mapping:Map[String, Boolean] = servicesSuccessMap ++
-        Map(
-          "/income/CS700100A/tax-summary/2017" -> false,
-          "/income/CS700100A/tax-credits/tax-credits-summary" -> false
-        )
-
-      val jsonMatch = Seq(TestData.taxSummaryEmpty, TestData.taxCreditSummaryEmpty, TestData.submissionStateOn, TestData.campaigns, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, "async_native-apps-api-id-"+test_id, Nino("CS700100A"),
-        jsonMatch, 401, """{"token":"123456"}""", Some("max-age=14400"), Some(Nino("CS722100B")))(versionRequest)
-    }
-
-    "return taxCreditSummary attribute with no summary data when Exclusion returns false" in new ExclusionTrue {
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.taxCreditSummaryEmpty, TestData.submissionStateOn, TestData.statusComplete).
-        foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, "async_native-apps-api-id-ExclusionTrue", Nino("CS700100A"),
-        jsonMatch)(versionRequest)
-    }
-
-    "return taxCreditSummary attribute when submission state is not active" in new RenewalSubmissionNotActive {
-        val jsonMatch = Seq(TestData.taxSummary(), TestData.taxCreditSummary, TestData.submissionStateOff, TestData.campaigns, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-        invokeOrchestrateAndPollForResult(controller, "async_native-apps-api-id-RenewalSubmissionNotActive", Nino("CS700100A"),
-          jsonMatch)(versionRequest)
+      val controller: NativeAppsOrchestrationController = new NativeAppsOrchestrationController {
+        override val service: OrchestrationService = mock[OrchestrationService]
+        override val eventMax: Int = 10
+        override val serviceMax: Int = 10
+        override val maxAgeForSuccess: Int = 10000
+        override val auditConnector: AuditConnector = mock[AuditConnector]
+        override val confLevel: Int = 200
+        override val repository: AsyncRepository = mock[AsyncRepository]
+        override val app: String = "test"
+        override def authConnector: AuthConnector = mock[AuthConnector]
+        override def throttleLimit = 0
+        override protected lazy val actorSystem = OrchestrationControllerSpec.this.actorSystem
+        override protected lazy val lifecycle = OrchestrationControllerSpec.this.lifecycle
       }
-
-    "return no taxCreditSummary attribute when exclusion service throws 400 exception" in new ExclusionException {
-      override val testId = "BadRequest"
-
-      override lazy val decisionFailureException = Some(new BadRequestException("Controlled 404"))
-
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.submissionStateOn, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$testId", Nino("CS700100A"),
-        jsonMatch)(versionRequest)
-    }
-
-    "return no taxCreditSummary attribute when exclusion service throws 404 exception" in new ExclusionException {
-      override val testId = "NotFound"
-
-      override lazy val decisionFailureException = Some(new NotFoundException("Controlled 404"))
-
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.submissionStateOn, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$testId", Nino("CS700100A"),
-        jsonMatch)(versionRequest)
-    }
-
-    "return no taxCreditSummary attribute when exclusion service throws 401 exception" in new ExclusionException {
-      override val testId = "Unauthorized"
-
-      override lazy val decisionFailureException = Some(new Upstream4xxResponse("Controlled 404", 401, 401))
-
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.submissionStateOn, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$testId", Nino("CS700100A"),
-        jsonMatch)(versionRequest)
-
-      authConnector.grantAccountCount should be >= 2
-    }
-
-
-    "return empty taxCreditSummary block tax-credit-decision fails with 404 response" in new TestGenericController {
-      override val statusCode: Option[Int] = None
-      override val exception:Option[Exception]=Some(new NotFoundException("controlled explosion"))
-      override val mapping:Map[String, Boolean] = servicesSuccessMap ++ Map("/income/CS700100A/tax-credits/tax-credits-decision" -> false)
-      override lazy val test_id: String = s"test_id_testOrchestrationDecisionFailure_$time"
-      override val taxSummaryData: JsValue = TestData.taxSummaryData()
-
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.submissionStateOn, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-test_id_testOrchestrationDecisionFailure_$time", Nino("CS700100A"),
-        jsonMatch)(versionRequest)
-    }
-
-    "return taxCreditSummary block when submission state returns a non 200 response" in new TestGenericController {
-      override val statusCode: Option[Int] = None
-      override val exception:Option[Exception]=Some(new BadRequestException("controlled explosion"))
-      override val mapping:Map[String, Boolean] = servicesSuccessMap ++ Map("/income/tax-credits/submission/state/enabled" -> false)
-      override lazy val test_id: String = s"test_id_testOrchestrationDecisionFailure_$time"
-      override val taxSummaryData: JsValue = TestData.taxSummaryData()
-
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.taxCreditSummary, TestData.submissionStateOff, TestData.campaigns, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-test_id_testOrchestrationDecisionFailure_$time", Nino("CS700100A"),
-        jsonMatch)(versionRequest)
-    }
-
-    "return empty tax-credit-summary response when retrieval of tax-summary returns non 200 response and push-registration executed successfully" in new TestGenericController {
-      override val statusCode: Option[Int] = None
-      override val exception:Option[Exception]=Some(new BadRequestException("controlled explosion"))
-      override val mapping:Map[String, Boolean] = servicesSuccessMap ++ Map("/income/CS700100A/tax-summary/2017" -> false)
-      override lazy val test_id: String = s"test_id_testOrchestrationDecisionFailure_$time"
-      override val taxSummaryData: JsValue = TestData.taxSummaryData()
-
-      val jsonMatch = Seq(TestData.taxSummaryEmpty, TestData.taxCreditSummary, TestData.submissionStateOn, TestData.campaigns, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-test_id_testOrchestrationDecisionFailure_$time", Nino("CS700100A"),
-        jsonMatch, 200, """{"token":"123456"}""")(versionRequest)
-
-      pushRegistrationInvokeCount shouldBe 1
-    }
-
-    "return empty taxSummary attribute when tax-summary returns non 200 response and empty taxCreditSummary when retrieval of tax-credit-summary returns non 200 response" in new TestGenericController {
-      override val statusCode: Option[Int] = None
-      override val exception:Option[Exception]=Some(new BadRequestException("controlled explosion"))
-      override val mapping:Map[String, Boolean] = servicesSuccessMap ++
-        Map(
-          "/income/CS700100A/tax-summary/2017" -> false,
-          "/income/CS700100A/tax-credits/tax-credits-summary" -> false
-        )
-
-      override lazy val test_id: String = s"test_id_testOrchestrationDecisionFailure_$time"
-      override val taxSummaryData: JsValue = TestData.taxSummaryData()
-
-      val jsonMatch = Seq(TestData.taxSummaryEmpty, TestData.taxCreditSummaryEmpty, TestData.submissionStateOn, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-test_id_testOrchestrationDecisionFailure_$time", Nino("CS700100A"),
-        jsonMatch, 200, """{"token":"123456"}""")(versionRequest)
-
-      pushRegistrationInvokeCount shouldBe 1
-    }
-
-    "return taxCreditSummary empty JSON when the tax-credit-summary service returns a non 200 response + not invoke PushReg when payload is empty" in new TestGenericController {
-      override val statusCode : Option[Int] = None
-      override val exception :Option[Exception] = Some(new BadRequestException("controlled explosion"))
-      override val mapping :Map[String, Boolean] = servicesSuccessMap ++ Map("/income/CS700100A/tax-credits/tax-credits-summary" -> false)
-      override lazy val test_id: String = s"test_id_testOrchestrationDecisionFailure_$time"
-      override val taxSummaryData: JsValue = TestData.taxSummaryData()
-
-      val jsonMatch = Seq(TestData.taxSummary(), TestData.taxCreditSummaryEmpty, TestData.submissionStateOn, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-test_id_testOrchestrationDecisionFailure_$time", Nino("CS700100A"),
-        jsonMatch, 200, "{}")(versionRequest)
-
-      pushRegistrationInvokeCount shouldBe 0
-    }
-
-    "return throttle status response when throttle limit has been hit" in new ThrottleLimit {
-      val result = performOrchestrate("{}", controller, controller.testSessionId, nino)
+      val result = performOrchestrate(Json.stringify(Json.obj()), controller, Nino(nino))
       status(result) shouldBe 429
       jsonBodyOf(result) shouldBe TestData.statusThrottle
     }
 
-    "returns a success response from version-check generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "GenericSuccess"
-      override val statusCode: Option[Int] = Option(200)
-      override val mapping: Map[String, Boolean] = Map("/profile/native-app/version-check" -> true)
-      override val exception: Option[Exception] = None
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/version-check.json").get)
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/version-check-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns a success response from deskpro-feedback generic service"  in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "GenericTokenSuccess"
-      override val statusCode: Option[Int] = Option(200)
-
-      override lazy val exception: Option[Exception] = None
-
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(false, TestData.responseTicket)))
-
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/feedback-response.json").get)
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/feedback-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-          "Accept" -> "application/vnd.hmrc.1.0+json",
-          "Authorization" -> "Some Header"
-        ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns a failure response from deskpro-feedback generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "GenericTokenFailure"
-      override val statusCode: Option[Int] = Option(200)
-
-      override lazy val exception: Option[Exception] = None
-
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(true, TestData.responseTicket)))
-
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/feedback-failure-response.json").get)
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/feedback-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-          "Accept" -> "application/vnd.hmrc.1.0+json",
-          "Authorization" -> "Some Header"
-        ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns multiple failure responses from deskpro-feedback generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "GenericTokenMultipleFailure"
-      override val statusCode: Option[Int] = Option(200)
-
-      override lazy val exception: Option[Exception] = None
-
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(
-        Seq(GenericServiceResponse(true, TestData.responseTicket), GenericServiceResponse(true, TestData.responseTicket)))
-
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/feedback-multiple-failure-response.json").get)
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/feedback-multiple-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-          "Accept" -> "application/vnd.hmrc.1.0+json",
-          "Authorization" -> "Some Header"
-        ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns mixture of failure and success responses from deskpro-feedback generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "GenericTokenMultipleSuccessAndFailure"
-      override val statusCode: Option[Int] = Option(200)
-      override lazy val exception: Option[Exception] = None
-
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(
-        Seq(GenericServiceResponse(true, TestData.responseTicket), GenericServiceResponse(false, TestData.responseTicket)))
-      val expectedResponse = """{"OrchestrationResponse":{"response":[{"serviceName":"deskpro-feedback","failure":true},{"serviceName":"deskpro-feedback","failure":true}]},"status":{"code":"complete"}}"""
-
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/feedback-success-failure-response.json").get)
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/feedback-multiple-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-          "Accept" -> "application/vnd.hmrc.1.0+json",
-          "Authorization" -> "Some Header"
-        ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns response of failure with a timeout flag set when a GatewayTimeoutException occurs executing the generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "GenericTokenTimeoutFailure"
-      override val statusCode: Option[Int] = Option(200)
-      override lazy val exception: Option[Exception] = None
-
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(
-        Seq(GenericServiceResponse(true, TestData.responseTicket)), Some("timeout"))
-      val expectedResponse = """{"OrchestrationResponse":{"response":[{"serviceName":"deskpro-feedback","failure":true,"timeout":true}]},"status":{"code":"complete"}}"""
-
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/feedback-failure-timeout-response.json").get)
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/feedback-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-
-    "returns a success response from push-notification-get-message generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "push-push-notification-get-message-success"
-      override val statusCode: Option[Int] = Option(200)
-      override val mapping: Map[String, Boolean] = Map("/messages/c59e6746-9cd8-454f-a4fd-c5dc42db7d99" -> true)
-      override val exception: Option[Exception] = None
-      override lazy val response: JsValue = Json.parse(findResource(s"/resources/generic/push-notification-get-message-response.json").get)
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(false,
-        (response \\ "responseData").head)))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/push-notification-get-message-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns a success response from push-notification-respond-to-message generic service" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "push-notification-respond-to-message-success"
-      override val statusCode: Option[Int] = Some(200)
-      override val mapping: Map[String, Boolean] = Map("/messages/c59e6746-9cd8-454f-a4fd-c5dc42db7d99/response" -> true)
-      override val exception: Option[Exception] = None
-      override lazy val response: JsValue = Json.parse(findResource(s"/resources/generic/push-notification-respond-to-message-response.json").get)
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(false,
-        (response \\ "responseData").head)))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/push-notification-respond-to-message-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response, 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "return success response from claimant-details service" in new TestGenericOrchestrationController with FileResource {
-      lazy val claimantDetails: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-
-      override lazy val test_id: String = "claimant-details-success"
-      override val exception: Option[Exception] = None
-      override val statusCode: Option[Int] = Option(200)
-      override lazy val response: JsValue = Json.parse(findResource(s"/resources/generic/tax-credit-claimant-details-response.json").get)
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(
-        GenericServiceResponse(failure = false, (claimantDetails \\ "firstCall").head),
-        GenericServiceResponse(failure = false, Json.parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}""")),
-        GenericServiceResponse(failure = false, (claimantDetails \\ "secondCall").head)
-      ))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details-request.json").get)
-      val fakeRequest: FakeRequest[AnyContentAsJson] = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "return success response from claimant-details service given a problem with the tcrAuthToken" in new TestGenericOrchestrationController with FileResource {
-      lazy val claimantDetails: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      lazy val fullResponse: String = findResource(s"/resources/generic/tax-credit-claimant-details-response.json").get
-      lazy val trim: UnanchoredRegex = """(?s)FirstSpecifiedDate[^,]+,.*?"renewalForm[^}]+""".r.unanchored
-
-      override lazy val test_id: String = "claimant-details-no-auth"
-      override val exception: Option[Exception] = None
-      override val statusCode: Option[Int] = Option(200)
-      override lazy val response: JsValue = Json.parse(trim.replaceAllIn(fullResponse, """FirstSpecifiedDate": "12/10/2010""""))
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(
-        GenericServiceResponse(failure = false, (claimantDetails \\ "firstCall").head),
-        GenericServiceResponse(failure = true, Json.parse("""{"ERROR" : "Broken token"}"""))
-      ))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details-request.json").get)
-      val fakeRequest: FakeRequest[AnyContentAsJson] = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "return success response from claimant-details service given a problem with the claimant-details" in new TestGenericOrchestrationController with FileResource {
-      lazy val claimantDetails: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      lazy val fullResponse: String = findResource(s"/resources/generic/tax-credit-claimant-details-response.json").get
-      lazy val trim: UnanchoredRegex = """(?s)FirstSpecifiedDate[^,]+,.*?"renewalForm[^}]+""".r.unanchored
-
-      override lazy val test_id: String = "claimant-details-no-details"
-      override val exception: Option[Exception] = None
-      override val statusCode: Option[Int] = Option(200)
-      override lazy val response: JsValue = Json.parse(trim.replaceAllIn(fullResponse, """FirstSpecifiedDate": "12/10/2010""""))
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(
-        GenericServiceResponse(failure = false, (claimantDetails \\ "firstCall").head),
-        GenericServiceResponse(failure = false, Json.parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}""")),
-        GenericServiceResponse(failure = true, Json.parse("""{"ERROR" : "Broken details"}"""))
-      ))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/tax-credit-claimant-details-request.json").get)
-      val fakeRequest: FakeRequest[AnyContentAsJson] = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns a success response from audit event request generic executor" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "audit-event-request-success"
-      override val statusCode: Option[Int] = Option(200)
-      override val mapping: Map[String, Boolean] = Map()
-      override val exception: Option[Exception] = None
-      override lazy val response: JsValue = Json.parse(findResource(s"/resources/generic/audit-event-executor-response.json").get)
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(false,response)))
-
-      val request: JsValue = Json.parse(findResource("/resources/generic/audit-event-executor-request.json").get)
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-    "returns mixture of service and event responses from generic orchestration" in new TestGenericOrchestrationController with FileResource {
-      override lazy val test_id: String = "generic-service-and-event-execution-response-success"
-      override val statusCode: Option[Int] = Option(200)
-      override lazy val exception: Option[Exception] = None
-
-      override lazy val testSuccessGenericConnector = new TestGenericOrchestrationConnector(Seq(GenericServiceResponse(false, TestData.responseTicket)))
-
-      override val response: JsValue = Json.parse(findResource(s"/resources/generic/generic-service-and-event-executor-response.json").get)
-
-      val request: JsValue = Json.parse(findResource(s"/resources/generic/generic-service-and-event-executor-request.json").get)
-
-      val fakeRequest = FakeRequest().withSession(
-        "AuthToken" -> "Some Header"
-      ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        "Authorization" -> "Some Header"
-      ).withJsonBody(request)
-
-      invokeOrchestrateAndPollForResult(controller, s"async_native-apps-api-id-$test_id", Nino("CS700100A"), response , 200, Json.stringify(request))(fakeRequest)
-    }
-
-
-    "Simulating concurrent http requests through the async framework " should {
-
-      "successfully process all concurrent requests and once all tasks are complete, verify the throttle value is 0" in {
-
-        def createController(counter: Int) = {
-          new TestGenericController {
-            override val time = counter.toLong
-            override lazy val test_id = s"test_id_concurrent_$counter"
-            override val exception: Option[Exception] = None
-            override val statusCode: Option[Int] = None
-            override val mapping: Map[String, Boolean] = servicesSuccessMap
-            override val taxSummaryData: JsValue = TestData.taxSummaryData(Some(test_id))
-          }
-        }
-
-        executeParallelAsyncTasks(createController, "async_native-apps-api-id-test_id_concurrent")
+    "return unauthorized when authority record does not contain a NINO" in new mocks {
+      stubAuthorisationGrantAccess(Some("") and ConfidenceLevel.L50)
+      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "UnauthorisedNoNino")
+      val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
+      status(response) shouldBe 200
+      jsonBodyOf(response) shouldBe TestData.pollResponse
+      response.header.headers.get("Set-Cookie").head shouldNot be(empty)
+      val pollRequestWithCookieHeader: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
+        .withHeaders( HeaderNames.CONTENT_TYPE → MimeTypes.JSON,
+          HeaderNames.ACCEPT → "application/vnd.hmrc.1.0+json",
+          HeaderNames.AUTHORIZATION → "Bearer 11111111",
+          HeaderNames.COOKIE → response.header.headers("Set-Cookie"))
+      val pollResponse: mvc.Result = Eventually.eventually {
+        await(controller.poll(Nino(nino), Some(journeyId))(pollRequestWithCookieHeader))(Duration(10, TimeUnit.SECONDS))
       }
+      status(pollResponse) shouldBe 401
+      Json.stringify(jsonBodyOf(pollResponse)) shouldBe """{"code":"UNAUTHORIZED","message":"NINO does not exist on account"}"""
+    }
 
-      def executeParallelAsyncTasks(generateController: => Int => TestGenericController, asyncTaskId:String) = {
-        val timeStart = System.currentTimeMillis()
-
-        val concurrentRequests = (0 until 20).foldLeft(Seq.empty[TestGenericController]) {
-          (list, counter) => {
-            list ++ Seq(generateController(counter))
-          }
-        }
-
-        val result = concurrentRequests.map { asyncTestRequest =>
-          val delay = scala.util.Random.nextInt(50)
-          TimedEvent.delayedSuccess(delay, 0).map(a => {
-            implicit val reqImpl = asyncTestRequest.requestWithAuthSession
-
-            // Build the expected response.
-            // Note: The specific async response is validated against the JSON generated server side contains the task Id.
-            val jsonMatch = Seq(TestData.taxSummary(Some(asyncTestRequest.controller.testSessionId)), TestData.taxCreditSummary, TestData.submissionStateOn, TestData.campaigns, TestData.statusComplete).foldLeft(Json.obj())((b, a) => b ++ a)
-
-            // Execute the controller async request and poll for response.
-            val task_id = s"${asyncTaskId}_${asyncTestRequest.time}"
-            invokeOrchestrateAndPollForResult(asyncTestRequest.controller, task_id, Nino("CS700100A"),
-              jsonMatch, 200, "{}")(asyncTestRequest.versionRequest)
-          })
-        }
-
-        eventually(Timeout(Span(95000, Milliseconds)), Interval(Span(2, Seconds))) {
-          await(Future.sequence(result))
-        }
-
-        uk.gov.hmrc.play.asyncmvc.async.Throttle.current shouldBe 0
-        println("Time spent processing... " + (System.currentTimeMillis() - timeStart))
+    "return 401 result with json status detailing low CL on authority" in new mocks {
+      stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L50)
+      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
+      val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "TestingLowCL")
+      val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
+      status(response) shouldBe 200
+      jsonBodyOf(response) shouldBe TestData.pollResponse
+      response.header.headers.get("Set-Cookie").head shouldNot be(empty)
+      val pollRequestWithCookieHeader: FakeRequest[AnyContentAsEmpty.type] = FakeRequest()
+        .withHeaders( HeaderNames.CONTENT_TYPE → MimeTypes.JSON,
+                      HeaderNames.ACCEPT → "application/vnd.hmrc.1.0+json",
+                      HeaderNames.AUTHORIZATION → "Bearer 11111111",
+                      HeaderNames.COOKIE → response.header.headers("Set-Cookie"))
+      val pollResponse: mvc.Result = Eventually.eventually {
+        await(controller.poll(Nino(nino), Some(journeyId))(pollRequestWithCookieHeader))(Duration(10, TimeUnit.SECONDS))
       }
-    }
-  }
-
-  "orchestrate live controller authentication " should {
-
-    "return unauthorized when authority record does not contain a NINO" in new AuthWithoutNino {
-      testNoNINO(await(controller.orchestrate(nino)(emptyRequestWithHeader)))
+      status(pollResponse) shouldBe 401
+      Json.stringify(jsonBodyOf(pollResponse)) shouldBe """{"code":"LOW_CONFIDENCE_LEVEL","message":"Confidence Level on account does not allow access"}"""
     }
 
-    "return 401 result with json status detailing low CL on authority" in new AuthWithLowCL {
-      testLowCL(await(controller.orchestrate(nino)(emptyRequestWithHeader)))
+    "return status code 406 when the headers are invalid" in new mocks {
+      val controller = new LiveOrchestrationController(mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000)
+      val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithoutHeaders))(Duration(10, TimeUnit.SECONDS))
+      status(response) shouldBe 406
+      Json.stringify(jsonBodyOf(response)) shouldBe """{"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"}"""
     }
 
-    "return status code 406 when the headers are invalid" in new Success {
-      val result = await(controller.orchestrate(nino)(emptyRequest))
-      status(result) shouldBe 406
-    }
   }
 
   "sandbox controller " should {
 
-    "return the PreFlightCheckResponse response from a static resource" in new SandboxSuccess {
-      val result = await(controller.preFlightCheck(Some(journeyId))(requestWithAuthSession.withBody(versionBody)))
+    "return the PreFlightCheckResponse response from a static resource" in new mocks {
+      val versionBody: JsValue = Json.parse("""{"os":"android", "version":"1.0.1"}""")
+      val versionRequestWithAuth: FakeRequest[JsValue] = FakeRequest().withBody(versionBody).withSession(
+          "AuthToken" -> "Some Header"
+        ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
+      val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector)
+      val controller = new SandboxOrchestrationControllerImpl(mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
+      val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithAuth))
       status(result) shouldBe 200
       val journeyIdRetrieve: String = (contentAsJson(result) \ "accounts" \ "journeyId").as[String]
-      contentAsJson(result) shouldBe Json.toJson(PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(nino), None, routeToIV = false, routeToTwoFactor = false, journeyIdRetrieve, "someCredId", "Individual")))
+      contentAsJson(result) shouldBe Json.toJson(PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(Nino(nino)), None, routeToIV = false, routeToTwoFactor = false, journeyIdRetrieve, "someCredId", "Individual")))
     }
 
-    "return startup response from a static resource" in new SandboxSuccess {
-      val result = await(controller.orchestrate(nino)(requestWithAuthSession.withJsonBody(Json.parse("""{}"""))))
+    "return startup response from a static resource" in new mocks {
+      val requestWithAuth: FakeRequest[AnyContentAsJson] = FakeRequest().withJsonBody(Json.obj()).withSession(
+        "AuthToken" -> "Some Header"
+      ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
+      val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector)
+      val controller = new SandboxOrchestrationControllerImpl(mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
+      val result: mvc.Result = await(controller.orchestrate(Nino(nino),Some(journeyId))(requestWithAuth))(Duration(10, TimeUnit.SECONDS))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe TestData.sandboxStartupResponse
     }
 
-    "return poll response from a static resource" in new SandboxSuccess {
-      val currentTime = (new LocalDate()).toDateTimeAtStartOfDay
-      val result = await(controller.poll(nino)(requestWithAuthSession))
+    "return poll response from a static resource" in new mocks {
+      val currentTime: DateTime = new LocalDate().toDateTimeAtStartOfDay
+      val requestWithAuth: FakeRequest[AnyContentAsJson] = FakeRequest().withJsonBody(Json.obj()).withSession(
+        "AuthToken" -> "Some Header"
+      ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
+      val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector)
+      val controller = new SandboxOrchestrationControllerImpl(mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
+      val result: mvc.Result = await(controller.poll(Nino(nino))(requestWithAuth))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe Json.parse(TestData.sandboxPollResponse
         .replaceAll("previousDate1", currentTime.minusWeeks(2).getMillis.toString)
@@ -774,59 +249,19 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
   }
 
-  val token = "Bearer 123456789"
-  def performOrchestrate(inputBody: String, controller: NativeAppsOrchestrationController, testSessionId: String, nino: Nino,
-                         journeyId: Option[String] = None) = {
-    val authToken = "AuthToken" -> token
-    val authHeader = "Authorization" -> token
-    val body: JsValue = Json.parse(inputBody)
 
+  def performOrchestrate(inputBody: String, controller: NativeAppsOrchestrationController, nino: Nino, journeyId: Option[String] = None): mvc.Result = {
+    val token = "Bearer 123456789"
+    val authToken = "AuthToken" -> token
+    val authHeader = AUTHORIZATION -> token
+    val body: JsValue = Json.parse(inputBody)
     val requestWithSessionKeyAndId = FakeRequest()
       .withSession(
         authToken
       ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        authHeader
-      ).withJsonBody(body)
-
+      ACCEPT -> "application/vnd.hmrc.1.0+json",
+      authHeader
+    ).withJsonBody(body)
     await(controller.orchestrate(nino, journeyId).apply(requestWithSessionKeyAndId))
   }
-
-  def invokeOrchestrateAndPollForResult(controller: NativeAppsOrchestrationController, testSessionId: String, nino: Nino, response: JsValue, resultCode: Int = 200,
-                                        inputBody: String = """{"token":"123456"}""", cacheHeader : Option[String] = Some("max-age=14400"),
-                                         overrideNino:Option[Nino]=None)(implicit request: Request[_]) = {
-    val authToken = "AuthToken" -> token
-    val authHeader = "Authorization" -> token
-
-    val requestWithSessionKeyAndIdNoBody = FakeRequest().withSession(
-      controller.AsyncMVCSessionId -> controller.buildSession(controller.id, testSessionId),
-      authToken
-    ).withHeaders(
-        "Accept" -> "application/vnd.hmrc.1.0+json",
-        authHeader
-      )
-
-    // Perform startup request.
-    val startupResponse = performOrchestrate(inputBody, controller, testSessionId, nino)
-    status(startupResponse) shouldBe 200
-
-    // Verify the Id within the session matches the expected test Id.
-    val session = startupResponse.session.get(controller.AsyncMVCSessionId)
-
-    val jsonSession = Json.parse(session.get).as[AsyncMvcSession]
-    jsonSession.id shouldBe testSessionId
-
-    // Poll for the result.
-    eventually(Timeout(Span(10, Seconds))) {
-      val pollResponse: Result = await(controller.poll(overrideNino.getOrElse(nino))(requestWithSessionKeyAndIdNoBody))
-
-      status(pollResponse) shouldBe resultCode
-      if (resultCode!=401) {
-        jsonBodyOf(pollResponse) shouldBe response
-
-        pollResponse.header.headers.get("Cache-Control") shouldBe cacheHeader
-      }
-    }
-  }
-
 }

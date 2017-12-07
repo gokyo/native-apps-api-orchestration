@@ -16,25 +16,23 @@
 
 package uk.gov.hmrc.ngc.orchestration.config
 
-import akka.stream.Materializer
 import com.typesafe.config.Config
 import net.ceedubs.ficus.Ficus._
-import play.api.Play.current
-import play.api._
 import play.api.libs.json.Json
 import play.api.mvc.Results._
 import play.api.mvc._
+import play.api.{Application, Configuration, Play}
 import uk.gov.hmrc.api.config.{ServiceLocatorConfig, ServiceLocatorRegistration}
 import uk.gov.hmrc.api.connector.ServiceLocatorConnector
 import uk.gov.hmrc.api.controllers._
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.config.CookieSessionFilter
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
-import uk.gov.hmrc.play.auth.microservice.filters.AuthorisationFilter
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig, RunMode}
-import uk.gov.hmrc.play.filters.NoCacheFilter
+import uk.gov.hmrc.play.filters.{MicroserviceFilterSupport, NoCacheFilter}
 import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
-import uk.gov.hmrc.play.microservice.filters.{AuditFilter, LoggingFilter, MicroserviceFilterSupport}
+import uk.gov.hmrc.play.microservice.filters.{AuditFilter, LoggingFilter}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -47,8 +45,7 @@ object AuthParamsControllerConfiguration extends AuthParamsControllerConfig {
   lazy val controllerConfigs = ControllerConfiguration.controllerConfigs
 }
 
-object MicroserviceAuditFilter extends AuditFilter with AppName {
-  implicit def mat: Materializer = Play.materializer
+object MicroserviceAuditFilter extends AuditFilter with AppName with MicroserviceFilterSupport {
 
   override val auditConnector = MicroserviceAuditConnector
 
@@ -59,31 +56,25 @@ object MicroserviceLoggingFilter extends LoggingFilter with MicroserviceFilterSu
   override def controllerNeedsLogging(controllerName: String) = ControllerConfiguration.paramsForController(controllerName).needsLogging
 }
 
-object MicroserviceAuthFilter extends AuthorisationFilter with MicroserviceFilterSupport {
-  override lazy val authParamsConfig = AuthParamsControllerConfiguration
-  override lazy val authConnector = MicroserviceAuthConnector
-
-  override def controllerNeedsAuth(controllerName: String): Boolean = ControllerConfiguration.paramsForController(controllerName).needsAuth
-}
-
 object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with ServiceLocatorConfig with ServiceLocatorRegistration {
-  override val auditConnector = MicroserviceAuditConnector
 
-  override def microserviceMetricsConfig(implicit app: Application): Option[Configuration] = app.configuration.getConfig(s"microservice.metrics")
+  override val auditConnector: AuditConnector = MicroserviceAuditConnector
 
-  override val loggingFilter = MicroserviceLoggingFilter
+  override def microserviceMetricsConfig(implicit app: Application): Option[Configuration] = app.configuration.getConfig("microservice.metrics")
 
-  override val microserviceAuditFilter = MicroserviceAuditFilter
+  override val loggingFilter: LoggingFilter = MicroserviceLoggingFilter
 
-  override val authFilter = Some(MicroserviceAuthFilter)
+  override val microserviceAuditFilter: AuditFilter = MicroserviceAuditFilter
+
+  override val authFilter: Option[EssentialFilter] = None
+
+  private lazy val sessionFilter = CookieSessionFilter.SessionCookieFilter
 
   override val slConnector: ServiceLocatorConnector = ServiceLocatorConnector(WSHttp)
 
   override implicit val hc: HeaderCarrier = HeaderCarrier()
 
   override def microserviceFilters: Seq[EssentialFilter] = Seq.empty
-
-  private lazy val sessionFilter = CookieSessionFilter.SessionCookieFilter
 
   override def doFilter(a: EssentialAction): EssentialAction = {
     // Note: Add the session filter to the controller in order for session cookie handling.
@@ -106,6 +97,5 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Se
     }
     Future.successful(Status(errorScenario.httpStatusCode)(Json.toJson(errorScenario)))
   }
-
   override def onHandlerNotFound(request: RequestHeader): Future[Result] = Future.successful(NotFound(Json.toJson(ErrorNotFound)))
 }
