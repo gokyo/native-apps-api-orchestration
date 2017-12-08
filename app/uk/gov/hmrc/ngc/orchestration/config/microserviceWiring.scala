@@ -16,30 +16,24 @@
 
 package uk.gov.hmrc.ngc.orchestration.config
 
-import javax.inject.Singleton
-
+import com.google.inject.{Inject, Singleton}
+import play.api.{Configuration, Environment}
 import uk.gov.hmrc.auth.core.PlayAuthConnector
 import uk.gov.hmrc.http.{HttpGet, HttpPost}
-import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.config.{RunMode, ServicesConfig}
 import uk.gov.hmrc.play.http.ws.{WSGet, WSPost}
-import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
 
-
-trait WSHttp extends HttpGet with HttpPost with WSGet with WSPost with RunMode {
+@Singleton
+class WSHttp @Inject() (override val runModeConfiguration: Configuration, environment: Environment) extends HttpGet with HttpPost with WSGet with WSPost with RunMode {
   override val hooks = NoneRequired
-}
-
-object WSHttp extends WSHttp
-
-object MicroserviceAuditConnector extends AuditConnector with RunMode {
-  override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
+  override protected def mode = environment.mode
 }
 
 @Singleton
-class MicroserviceAuthConnector extends PlayAuthConnector with ServicesConfig {
+class MicroserviceAuthConnector @Inject()(override val runModeConfiguration: Configuration, environment: Environment, wsHttp: WSHttp) extends PlayAuthConnector with ServicesConfig {
   override lazy val serviceUrl = baseUrl("auth")
-  override def http = WSHttp
+  override def http = wsHttp
+  override protected def mode = environment.mode
 }
 
 

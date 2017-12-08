@@ -20,7 +20,7 @@ import javax.inject.{Named, Singleton}
 
 import akka.actor.ActorSystem
 import com.google.inject.Inject
-import play.api.Logger
+import play.api.{Configuration, Logger}
 import play.api.http.HeaderNames
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsSuccess, JsValue, Json}
@@ -32,8 +32,7 @@ import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.repository.{AsyncMongoRepository, AsyncRepository}
-import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
-import uk.gov.hmrc.ngc.orchestration.services.{Result => _, _}
+import uk.gov.hmrc.ngc.orchestration.services.{Result ⇒ _, _}
 import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.asyncmvc.model.AsyncMvcSession
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -179,6 +178,8 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
 
 @Singleton
 class LiveOrchestrationController  @Inject()(
+  override val appNameConfiguration: Configuration,
+  override val auditConnector: AuditConnector,
   override val authConnector: AuthConnector,
   override val service: LiveOrchestrationService,
   override val actorSystem: ActorSystem,
@@ -191,5 +192,4 @@ class LiveOrchestrationController  @Inject()(
 
   override val app: String = "Live-Orchestration-Controller"
   override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.mongoConnector.db)
-  override val auditConnector: AuditConnector = MicroserviceAuditConnector
 }

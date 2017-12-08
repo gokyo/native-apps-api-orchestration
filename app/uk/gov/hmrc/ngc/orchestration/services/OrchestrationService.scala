@@ -20,14 +20,14 @@ import java.util.UUID
 
 import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
-import play.api.Logger
+import play.api.{Configuration, Logger}
 import play.api.libs.json._
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
-import uk.gov.hmrc.ngc.orchestration.config.{ConfiguredCampaigns, MicroserviceAuditConnector}
+import uk.gov.hmrc.ngc.orchestration.config.ConfiguredCampaigns
 import uk.gov.hmrc.ngc.orchestration.connectors._
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
@@ -64,11 +64,13 @@ trait OrchestrationService {
 
 @Singleton
 class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
-                                         override val genericConnector: GenericConnector,
+                                         executorFactory: ExecutorFactory,
+                                         genericConnector: GenericConnector,
+                                         override val appNameConfiguration: Configuration,
                                          override val auditConnector: AuditConnector,
                                          override val authConnector: AuthConnector,
                                          @Named("controllers.confidenceLevel") override val confLevel: Int)
-  extends OrchestrationService with Authorisation with ExecutorFactory with Auditor with ConfiguredCampaigns {
+  extends OrchestrationService with Authorisation with Auditor with ConfiguredCampaigns {
 
   override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
     withAudit("preFlightCheck", Map.empty) {
@@ -95,7 +97,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     grantAccess(nino).map { _ ⇒
       request match {
         case OrchestrationServiceRequest(None, Some(request)) ⇒
-          buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
+          executorFactory.buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
         case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
           startup(legacyRequest, nino, journeyId)
       }
@@ -147,10 +149,8 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
 }
 
 @Singleton
-class SandboxOrchestrationService @Inject() (override val genericConnector: GenericConnector)
-  extends OrchestrationService with FileResource with ExecutorFactory {
-
-  override val auditConnector = MicroserviceAuditConnector
+class SandboxOrchestrationService @Inject() (genericConnector: GenericConnector, executorFactory: ExecutorFactory)
+  extends OrchestrationService with FileResource {
 
   val cache: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
 

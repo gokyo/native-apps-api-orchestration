@@ -20,13 +20,13 @@ import javax.inject.{Named, Singleton}
 
 import akka.actor.ActorSystem
 import com.google.inject.Inject
+import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc.{Action, AnyContent, BodyParsers, Cookie}
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.msasync.repository.AsyncRepository
-import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.services.{PreFlightRequest, SandboxOrchestrationService}
 import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -92,6 +92,8 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
 
 @Singleton
 class SandboxOrchestrationControllerImpl @Inject()(
+  override val appNameConfiguration: Configuration,
+  override val auditConnector: AuditConnector,
   override val authConnector: AuthConnector,
   override val service: SandboxOrchestrationService,
   override val actorSystem: ActorSystem,
@@ -99,6 +101,5 @@ class SandboxOrchestrationControllerImpl @Inject()(
   @Named("supported.generic.service.max") override val serviceMax: Int,
   @Named("supported.generic.event.max") override val eventMax: Int,
   @Named("controllers.confidenceLevel") override val confLevel: Int) extends SandboxOrchestrationController {
-  val auditConnector: AuditConnector = MicroserviceAuditConnector
   override val maxAgeForSuccess: Int = 14400
 }

@@ -36,13 +36,9 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
 
     bind(classOf[AuthConnector]).to(classOf[MicroserviceAuthConnector])
 
-    bind(classOf[AuditConnector]).toInstance(MicroserviceAuditConnector)
-
     bindConfigInt("supported.generic.service.max")
     bindConfigInt("supported.generic.event.max")
-
     bindConfigInt("controllers.confidenceLevel")
-
     bindConfigInt("poll.success.maxAge")
 
     bindConfigStringSeq("scopes")

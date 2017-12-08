@@ -16,11 +16,11 @@
 
 package uk.gov.hmrc.ngc.orchestration.executors
 
+import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.libs.json._
 import play.api.{Configuration, Logger, LoggerLike, Play}
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier}
-import uk.gov.hmrc.ngc.orchestration.config.MicroserviceAuditConnector
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
 import uk.gov.hmrc.play.audit.AuditExtensions._
@@ -37,7 +37,8 @@ sealed trait Executor[T >: ExecutorResponse] {
   val executorName: String
   val cacheTime: Option[Long]
 
-  def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[T]]
+  def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])
+             (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[T]]
 }
 
 trait ServiceExecutor extends Executor[ExecutorResponse] {
@@ -45,6 +46,7 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
   val POST = "POST"
   val GET = "GET"
   val cacheTime: Option[Long]
+  val configuration: Configuration
   lazy val host: String = getConfigProperty("host")
   lazy val port: Int = getConfigProperty("port").toInt
 
@@ -52,7 +54,8 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
 
   def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String
 
-  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
+  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])
+                      (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
     executionType.toUpperCase match {
       case POST =>
         val postData = data.getOrElse(throw new Exception("No Post Data Provided!"))
@@ -72,11 +75,13 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
   }
 
   private def getServiceConfig: Configuration = {
-    Play.current.configuration.getConfig(s"microservice.services.$serviceName").getOrElse(throw new Exception(s"No micro services configured for $serviceName."))
+    configuration.getConfig(s"microservice.services.$serviceName")
+      .getOrElse(throw new Exception(s"No micro services configured for $serviceName."))
   }
 
   private def getConfigProperty(property: String): String = {
-    getServiceConfig.getString(property).getOrElse(throw new Exception(s"No service configuration found for $serviceName"))
+    getServiceConfig.getString(property)
+      .getOrElse(throw new Exception(s"No service configuration found for $serviceName"))
   }
 
   def buildJourneyQueryParam(journeyId: Option[String]) = journeyId.fold("")(id => s"?journeyId=$id")
@@ -84,19 +89,17 @@ trait ServiceExecutor extends Executor[ExecutorResponse] {
 
 trait EventExecutor extends Executor[ExecutorResponse]
 
-trait ExecutorFactory {
+@Singleton
+class ExecutorFactory @Inject()(genericConnector: GenericConnector, auditConnector: AuditConnector, configuration: Configuration){
 
-  val genericConnector: GenericConnector
-  val auditConnector: AuditConnector
+  val feedback = new DeskProFeedbackExecutor(genericConnector, configuration)
+  val versionCheck = new VersionCheckExecutor(genericConnector, configuration)
+  val pushNotificationGetMessageExecutor = new PushNotificationGetMessageExecutor(genericConnector, configuration)
+  val pushNotificationRespondToMessageExecutor = new PushNotificationRespondToMessageExecutor(genericConnector, configuration)
+  val nativeAppSurveyWidget = new WidgetSurveyDataServiceExecutor(genericConnector, configuration)
+  val claimantDetailsServiceExecutor = new ClaimantDetailsServiceExecutor(genericConnector, configuration)
 
-  val feedback = DeskProFeedbackExecutor(genericConnector)
-  val versionCheck = VersionCheckExecutor(genericConnector)
-  val pushNotificationGetMessageExecutor = PushNotificationGetMessageExecutor(genericConnector)
-  val pushNotificationRespondToMessageExecutor = PushNotificationRespondToMessageExecutor(genericConnector)
-  val nativeAppSurveyWidget = WidgetSurveyDataServiceExecutor(genericConnector)
-  val claimantDetailsServiceExecutor = ClaimantDetailsServiceExecutor(genericConnector)
-
-  val auditEventExecutor = AuditEventExecutor(audit = new Audit("native-apps", auditConnector))
+  val auditEventExecutor = new AuditEventExecutor(audit = new Audit("native-apps", auditConnector))
 
   val serviceExecutors: Map[String, ServiceExecutor] = Map(
     Seq(
@@ -128,7 +131,8 @@ trait ExecutorFactory {
     } yield (OrchestrationResponse(serviceResponse, eventResponse))
   }
 
-  private def execute[T >: ExecutorResponse](request: Seq[ExecutorRequest], nino: String, journeyId: Option[String], executors: Map[String, Executor[T]])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Seq[T]] = {
+  private def execute[T >: ExecutorResponse](request: Seq[ExecutorRequest], nino: String, journeyId: Option[String], executors: Map[String, Executor[T]])
+                                            (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Seq[T]] = {
     val futuresSeq: Seq[Future[Option[T]]] = request.map {
       request => (executors.get(request.name), request.data)
     }.map(item => item._1.get.execute(item._1.get.cacheTime, item._2, nino, journeyId)
@@ -146,7 +150,7 @@ trait ExecutorFactory {
 
 }
 
-case class VersionCheckExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
+class VersionCheckExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val executorName: String = "version-check"
 
   override val executionType: String = POST
@@ -157,9 +161,11 @@ case class VersionCheckExecutor(genericConnector: GenericConnector) extends Serv
   override def connector: GenericConnector = genericConnector
 
   override val cacheTime: Option[Long] = None
+
+  override val configuration = config
 }
 
-case class DeskProFeedbackExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
+class DeskProFeedbackExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val executorName: String = "deskpro-feedback"
 
   override val executionType: String = POST
@@ -170,9 +176,10 @@ case class DeskProFeedbackExecutor(genericConnector: GenericConnector) extends S
   override val cacheTime: Option[Long] = None
 
   override def connector = genericConnector
+  override val configuration = config
 }
 
-case class PushNotificationGetMessageExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
+class PushNotificationGetMessageExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val executorName: String = "push-notification-get-message"
 
   override val executionType: String = GET
@@ -187,9 +194,10 @@ case class PushNotificationGetMessageExecutor(genericConnector: GenericConnector
   override val cacheTime: Option[Long] = None
 
   override def connector = genericConnector
+  override val configuration = config
 }
 
-case class PushNotificationRespondToMessageExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
+class PushNotificationRespondToMessageExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val executorName: String = "push-notification-respond-to-message"
 
   override val executionType: String = POST
@@ -204,9 +212,10 @@ case class PushNotificationRespondToMessageExecutor(genericConnector: GenericCon
   override val cacheTime: Option[Long] = None
 
   override def connector = genericConnector
+  override val configuration = config
 }
 
-case class AuditEventExecutor(audit: Audit = new Audit("native-apps", MicroserviceAuditConnector), logger: LoggerLike = Logger) extends EventExecutor {
+case class AuditEventExecutor(audit: Audit, logger: LoggerLike = Logger) extends EventExecutor {
 
   override val executorName: String = "ngc-audit-event"
   override val executionType: String = "EVENT"
@@ -214,7 +223,8 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
 
   private case class ValidData(auditType: String, extraDetail: Map[String, String])
 
-  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
+  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])
+                      (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
     val response = data.flatMap(validate).map { validData =>
       val defaultEvent = DataEvent(
         "native-apps",
@@ -264,7 +274,7 @@ case class AuditEventExecutor(audit: Audit = new Audit("native-apps", Microservi
   }
 }
 
-case class WidgetSurveyDataServiceExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
+class WidgetSurveyDataServiceExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val serviceName: String = "native-app-widget"
   override val cacheTime: Option[Long] = None
   override val executionType: String = POST
@@ -273,9 +283,11 @@ case class WidgetSurveyDataServiceExecutor(genericConnector: GenericConnector) e
   override def connector = genericConnector
 
   override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = s"/native-app-widget/${nino}/widget-data"
+
+  override val configuration = config
 }
 
-case class ClaimantDetailsServiceExecutor(genericConnector: GenericConnector) extends ServiceExecutor {
+class ClaimantDetailsServiceExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val serviceName: String = "personal-income"
   override val cacheTime: Option[Long] = None
 
@@ -287,7 +299,10 @@ case class ClaimantDetailsServiceExecutor(genericConnector: GenericConnector) ex
 
   override val executionType: String = ""
 
-  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
+  override val configuration = config
+
+  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])
+                      (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
 
     val journeyParam = journeyId.map(id => s"&journeyId=$id").getOrElse("")
 
