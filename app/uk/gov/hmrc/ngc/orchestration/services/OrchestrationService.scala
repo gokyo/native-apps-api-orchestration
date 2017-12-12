@@ -119,6 +119,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
       TaxSummary(genericConnector, journeyId),
       TaxCreditSummary(genericConnector, journeyId),
       TaxCreditsSubmissionState(genericConnector, journeyId),
+      TaxCreditsRenewals(genericConnector, journeyId),
       PushRegistration(genericConnector, inputRequest, journeyId)
     ).map(item => item.execute(nino, year))
 
