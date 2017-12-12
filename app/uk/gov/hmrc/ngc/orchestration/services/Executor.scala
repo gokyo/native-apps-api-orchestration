@@ -82,7 +82,6 @@ case class TaxCreditsRenewals(connector: GenericConnector, journeyId: Option[Str
         Some(Result(id, JsObject(Seq("submissionsState" -> JsString(res.\("submissionsState").as[String])))))
     ).recover {
       case ex: Exception =>
-        // Return a default state which indicates renewals are disabled.
         Logger.error(s"${logJourneyId(journeyId)} - Failed to retrieve TaxCreditsSubmissionState and exception is ${ex.getMessage}! Default of submissionsState is error!")
         Some(Result(id, JsObject(Seq("submissionsState" -> JsString(value = "error")))))
     }
