@@ -20,6 +20,7 @@ import java.util.UUID
 
 import org.joda.time.DateTime
 import org.mockito.ArgumentMatchers.{any, anyString, eq ⇒ eqs}
+import org.mockito.Mockito._
 import org.mockito.Mockito.when
 import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.{JsValue, Json}
@@ -310,6 +311,8 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       val testAccount = Accounts(Some(Nino(nino)), None, routeToIV = false, routeToTwoFactor = true, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))
       val response = await(mfaIntegration.mfaDecision(testAccount, Some(mfaRequest), Some(journeyId)))
+      verify(mockGenericConnector, times(2))
+        .doPostIgnoreResponse(eqs[JsValue](Json.obj()), eqs[String]("auth"), eqs[String]("/auth/credential-strength/strong"),any[HeaderCarrier]())(any[ExecutionContext]())
       response.value.routeToTwoFactor shouldBe false
     }
   }
