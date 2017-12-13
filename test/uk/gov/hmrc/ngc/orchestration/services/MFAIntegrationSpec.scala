@@ -78,6 +78,11 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       .thenReturn(Future.successful(response))
   }
 
+  def stubUpdateMainAuthorityCredentialStrengthStrong()(implicit genericConnector: GenericConnector): Unit = {
+    when(genericConnector.doPostIgnoreResponse(eqs[JsValue](Json.obj()), eqs[String]("auth"), eqs[String]("/auth/credential-strength/strong"),any[HeaderCarrier]())(any[ExecutionContext]()))
+      .thenReturn(Future.successful(()))
+  }
+
   def stubPOSTGenericConnectorFailure(path: String, status: Int)(implicit genericConnector: GenericConnector): Any = {
     if(status >= 400 && status < 500) {
       when(genericConnector.doPost(any[JsValue](), anyString(), eqs[String](path), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]()))
@@ -300,6 +305,7 @@ class MFAIntegrationSpec extends UnitSpec with WithFakeApplication with MockitoS
       stubPOSTGenericConnectorResponse(mfaAuthenticatedJourney, mfaAuthenticatedJourneyResponse)
       stubGETGenericConnectorResponse(mfaApiURI, expectedResponse)
       stubBearerTokenExchange()
+      stubUpdateMainAuthorityCredentialStrengthStrong()
       val mfaIntegration = new MFAIntegration(mockGenericConnector, scopes)
       val testAccount = Accounts(Some(Nino(nino)), None, routeToIV = false, routeToTwoFactor = true, journeyId, "some-cred-id", "Individual")
       val mfaRequest = MFARequest("outcome", Some("/multi-factor-authentication/journey/58d93f54280000da005d388b?origin=NGC"))

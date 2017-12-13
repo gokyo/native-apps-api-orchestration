@@ -49,6 +49,12 @@ class GenericConnector @Inject() (configuration: Configuration) {
     http.POST[JsValue, T](buildUrl(host(serviceName), port(serviceName), path), json)
   }
 
+  def doPostIgnoreResponse(json:JsValue, serviceName:String, path:String, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[Unit] = {
+    implicit val hcHeaders = addAPIHeaders(hc)
+    logHC(hc, s"transport: HC received is ${hc.authorization} for path $path")
+    http.POST(buildUrl(host(serviceName), port(serviceName), path), json).map(_ ⇒ Unit)
+  }
+
   def doGetRaw(serviceName:String, path:String, hc: HeaderCarrier)(implicit ec: ExecutionContext): Future[HttpResponse] = {
     implicit val hcHeaders = addAPIHeaders(hc)
     http.GET(buildUrl(host(serviceName), port(serviceName), path))
