@@ -25,22 +25,9 @@ object TestData {
 
   def responseTicket : JsValue = Json.parse(s"""{"ticket_id": 1980683879}""")
 
-  val testPreferences = Json.parse("""{"digital":true,"email":{"email":"name@email.co.uk","status":"verified"}}""")
-
-  val testState = Json.parse("""{"submissionState":true}""")
-
-  val testStateNotInSubmission = Json.parse("""{"submissionState":false}""")
-
-  val testAuthToken = JsString("someTestAuthToken")
-
+  val taxCreditRenewalsStateOpen = Json.parse("""{"submissionState":true, "submissionsState":"open"}""")
   val testTaxCreditDecision: JsValue = Json.parse("""{"showData":true}""")
-  val testTaxCreditDecisionNotDisplay: JsValue = Json.parse("""{"showData":false}""")
   val testPushReg = JsNull
-
-  val noNinoOnAccount = Json.parse("""{"code":"UNAUTHORIZED","message":"NINO does not exist on account"}""")
-  val lowCL = Json.parse("""{"code":"LOW_CONFIDENCE_LEVEL","message":"Confidence Level on account does not allow access"}""")
-  val weakCredStrength = Json.parse("""{"code":"WEAK_CRED_STRENGTH","message":"Credential Strength on account does not allow access"}""")
-
 
   val pollResponse = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
 
@@ -522,24 +509,7 @@ object TestData {
       |}
     """.stripMargin)
 
-
-  def taxSummary(id:Option[String]=None) = Json.obj("taxSummary" -> taxSummaryData(id))
-
-  val submissionStateOn = Json.obj("state" -> Json.obj(
-    "enableRenewals" -> true
-  ))
-  val submissionStateOff = Json.obj("state" -> Json.obj(
-    "enableRenewals" -> false
-  ))
-
-  val statusCompleteData = Json.parse("""{"code": "complete"}""")
-  val statusComplete = Json.obj("status" -> statusCompleteData)
-
-  val statusThrottleData = Json.parse("""{"code": "throttle"}""")
-  val statusThrottle = Json.obj("status" -> statusThrottleData)
-
-  val statusErrorData = Json.parse("""{"code": "error"}""")
-  val statusError = Json.obj("status" -> statusErrorData)
+  val statusThrottle = Json.obj("status" -> Json.parse("""{"code": "throttle"}"""))
 
   val taxCreditSummaryData = Json.parse(
     """
@@ -629,11 +599,6 @@ object TestData {
       |    "showData": true
       |  }
     """.stripMargin)
-  val taxCreditSummary = Json.obj("taxCreditSummary" -> taxCreditSummaryData)
-
-  val taxSummaryEmpty = Json.obj("taxSummary" -> Json.obj())
-
-  val taxCreditSummaryEmpty = Json.obj("taxCreditSummary" -> Json.obj())
 
   val sandboxStartupResponse = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
 

@@ -587,7 +587,10 @@ object PersonalIncomeStub {
   def taxCreditsSubmissionStateIsEnabled(): Unit = {
     val response =
       s"""
-        |{"submissionState": true}
+        |{
+        |  "submissionState": true,
+        |  "submissionsState": "open"
+        |}
       """.stripMargin
     stubGetSuccess("/income/tax-credits/submission/state/enabled", response)
   }

@@ -299,6 +299,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
       (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.parse(taxCreditSummaryJson)
       (pollResponse.json \ "state" \ "enableRenewals").as[Boolean] shouldBe true
+      (pollResponse.json \ "taxCreditRenewals"\ "submissionsState").as[String] shouldBe "open"
       (pollResponse.json \ "campaigns").as[JsArray] shouldBe Json.parse(
         """[{"campaignId": "HELP_TO_SAVE_1", "enabled": true, "minimumViews": 5, "dismissDays": 15, "requiredData": "workingTaxCredit"}]"""
       )
@@ -397,6 +398,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (pollResponse.json \ "taxSummary").as[JsObject] shouldBe Json.parse(taxSummaryJson(nino))
       (pollResponse.json \ "taxCreditSummary").as[JsObject] shouldBe Json.obj()
       (pollResponse.json \ "state"\ "enableRenewals").as[Boolean] shouldBe true
+      (pollResponse.json \ "taxCreditRenewals"\ "submissionsState").as[String] shouldBe "open"
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
     }
   }

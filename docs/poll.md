@@ -151,6 +151,9 @@ On success the below JSON will be returned. Please see notes below detailing the
   "state": {
     "enableRenewals": true
   },
+  "taxCreditRenewals": {
+    "submissionsState": "open"|"check_status_only"|"closed"|"shuttered"|"error"
+  },
   "status": {
     "code": "complete"
   }

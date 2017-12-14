@@ -23,7 +23,7 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.libs.functional.syntax._
 import play.api.libs.json._
-import uk.gov.hmrc.http.HeaderCarrier
+import uk.gov.hmrc.http.{HeaderCarrier, HttpReads}
 import uk.gov.hmrc.http.logging.Authorization
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.BadRequestException
@@ -182,7 +182,9 @@ class MFAIntegration @Inject() (genericConnector: GenericConnector, @Named("scop
     mfaValidateOutcome(accounts, mfa.apiURI.getOrElse(throw new IllegalArgumentException("Failed to obtain URI!")), journeyId)
   }
 
-  private def updateCredStrength()(implicit hc: HeaderCarrier): Future[Unit] = {Future(Unit)}
+  private def updateCredStrength()(implicit hc: HeaderCarrier): Future[Unit] = {
+    genericConnector.doPostIgnoreResponse(Json.obj(), "auth", "/auth/credential-strength/strong", hc)
+  }
 
   private def exchangeForBearer(credId: String)(implicit hc: HeaderCarrier): Future[AuthExchangeResponse] = {
     genericConnector.doPost[AuthExchangeResponse](Json.obj(), "auth", s"/auth/gg/$credId/exchange", hc)
