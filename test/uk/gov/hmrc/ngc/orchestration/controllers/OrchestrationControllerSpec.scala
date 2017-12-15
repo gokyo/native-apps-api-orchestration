@@ -150,7 +150,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
 
     "return unauthorized when authority record does not contain a NINO" in new mocks {
       stubAuthorisationGrantAccess(Some("") and ConfidenceLevel.L50)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
+      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "UnauthorisedNoNino")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
@@ -170,7 +170,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
 
     "return 401 result with json status detailing low CL on authority" in new mocks {
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L50)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200)
+      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val controller = new TestLiveOrchestrationController(mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "TestingLowCL")
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
