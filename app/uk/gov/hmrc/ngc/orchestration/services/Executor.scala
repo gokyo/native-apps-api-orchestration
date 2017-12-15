@@ -110,7 +110,7 @@ case class TaxCreditSummary(connector: GenericConnector, journeyId: Option[Strin
   def decision(nino: String)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Boolean]] = {
 
     def taxCreditDecision(nino: String)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
-      Logger.warn(s"decision: HC received is ${hc.authorization} for Journey Id $journeyId")
+      Logger.info(s"decision: HC received is ${hc.authorization} for Journey Id $journeyId")
 
       connector.doGet(serviceName, s"/income/$nino/tax-credits/tax-credits-decision${buildJourneyQueryParam(journeyId)}", hc).map(res => {
         Some(Result("decision", res))
