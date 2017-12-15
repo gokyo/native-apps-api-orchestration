@@ -60,6 +60,8 @@ To understand the outcome of a MFA web journey, the following POST request must 
   * **Code:** 200 <br />
     **Content:** 
 
+The routeToTwoFactor flag will be deprecated and as a first step it will always be set to false.
+
 The below JSON response will be returned when either the users account has a correct 2FA/MFA status, or when pre-flight is invoked without an mfa operation.
 
 ```json
@@ -75,9 +77,11 @@ The below JSON response will be returned when either the users account has a cor
 }
 ```
 
-If an mfa operation was supplied in the POST request and the users MFA credential strength is not Strong, the below response is returned. The webURI provides a URL
-to be supplied to the browser, and the apiURI is later used to validate the outcome of the MFA web journey.
-
+If an mfa operation was supplied in the POST request and the users MFA credential strength is not Strong, the below response is returned. 
+Note that the routeToTwoFactor will always be false.
+The mfaURI section is deprecated. It provides a webURI to be supplied to the browser, and the apiURI is later used to validate the outcome of the MFA web journey.
+However as the routeToTwoFactor is always false so this should always be ignored.
+ 
 ```json
 {
     "upgradeRequired": true,
