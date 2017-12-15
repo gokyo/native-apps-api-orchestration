@@ -414,7 +414,7 @@ trait BaseLiveOrchestrationControllerISpec extends BaseISpec {
 class LiveOrchestrationControllerISpec extends BaseLiveOrchestrationControllerISpec {
   override def routeToTwoFactorAlwaysFalse = false
 
-  "POST of /native-app/preflight-check with defaultRouteToTwoFactorToFalse = false " should {
+  "POST of /native-app/preflight-check with routeToTwoFactorAlwaysFalse = false " should {
     "call the MFA API URI and return routeToTwoFactor=true when cred-strength is not strong" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
@@ -453,7 +453,7 @@ class LiveOrchestrationControllerISpec extends BaseLiveOrchestrationControllerIS
 class LiveOrchestrationControllerWithRouteToTwoFactorAlwaysFalseISpec extends BaseLiveOrchestrationControllerISpec {
   override def routeToTwoFactorAlwaysFalse = true
 
-  "POST of /native-app/preflight-check with defaultRouteToTwoFactorToFalse = true " should {
+  "POST of /native-app/preflight-check with routeToTwoFactorAlwaysFalse = true " should {
     "call the MFA API URI and return routeToTwoFactor=false when cred-strength is not strong" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
