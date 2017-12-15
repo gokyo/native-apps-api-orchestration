@@ -78,13 +78,9 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
         versionUpdate <- getVersion(journeyId, request.os, request.version)
       } yield {
         val mfaURI: Option[MfaURI] = mfaOutcome.fold(Option.empty[MfaURI]){ _.mfa}
-        // If authority has been updated then override the original accounts response from auth.
         val returnAccounts = mfaOutcome.fold(accounts) { found =>
-          if (found.authUpdated)
-            accounts.copy(routeToTwoFactor = false)
-          else {
-            accounts.copy(routeToTwoFactor = found.routeToTwoFactor)
-          }
+          // default this to false under NGC-2510
+          accounts.copy(routeToTwoFactor = false)
         }
         PreFlightCheckResponse(versionUpdate, returnAccounts, mfaURI)
       }

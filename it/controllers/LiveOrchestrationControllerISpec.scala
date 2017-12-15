@@ -122,7 +122,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.status shouldBe 401
     }
 
-    "call the MFA API URI and return routeToTwoFactor=true when cred-strength is not strong" in {
+    "call the MFA API URI and return routeToTwoFactor=false when cred-strength is not strong" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
@@ -135,7 +135,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (response.json \ "upgradeRequired" ).as[Boolean] shouldBe false
       (response.json \ "accounts" \ "nino" ).as[String] shouldBe nino
       (response.json \ "accounts" \ "routeToIV" ).as[Boolean] shouldBe false
-      (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe true
+      (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
     }
 
     "return 500 response when the MFA service fails" in {
@@ -162,7 +162,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       response.status shouldBe 400
     }
 
-    "call the MFA API URI and return routeToTwoFactor=true when MFA API returns UNVERIFIED state" in {
+    "call the MFA API URI and return routeToTwoFactor=false when MFA API returns UNVERIFIED state" in {
       val nino = "CS700100A"
       writeAuditSucceeds()
       registrationWillSucceed()
@@ -176,7 +176,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       (response.json \ "upgradeRequired" ).as[Boolean] shouldBe false
       (response.json \ "accounts" \ "nino" ).as[String] shouldBe nino
       (response.json \ "accounts" \ "routeToIV" ).as[Boolean] shouldBe false
-      (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe true
+      (response.json \ "accounts" \ "routeToTwoFactor" ).as[Boolean] shouldBe false
     }
 
     "return response with routeToTwoFactor=false when MFA returns NOT_REQUIRED state" in {
