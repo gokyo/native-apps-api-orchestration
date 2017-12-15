@@ -89,7 +89,7 @@ However as the routeToTwoFactor is always false so this should always be ignored
         "nino": "WX772755B",
         "saUtr": "618567",
         "routeToIV": false,
-        "routeToTwoFactor": true,
+        "routeToTwoFactor": false,
         "journeyId": "f880d43b-bc44-4a68-b2e3-c0197963f01e"
     },
     "mfaURI": {
