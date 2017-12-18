@@ -17,6 +17,7 @@
 package uk.gov.hmrc.ngc.orchestration.controllers
 
 import akka.actor.ActorSystem
+import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
 import play.modules.reactivemongo.ReactiveMongoComponent
 import reactivemongo.bson.BSONObjectID
@@ -25,11 +26,12 @@ import uk.gov.hmrc.mongo.{DatabaseUpdate, Updated}
 import uk.gov.hmrc.msasync.repository.{AsyncRepository, TaskCachePersist}
 import uk.gov.hmrc.ngc.orchestration.services.LiveOrchestrationService
 import uk.gov.hmrc.play.asyncmvc.model.TaskCache
+import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 
 import scala.concurrent.Future
 
-class TestLiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, reactiveMongo: ReactiveMongoComponent, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
-  LiveOrchestrationController(authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
+class TestLiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, reactiveMongo: ReactiveMongoComponent, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
+  LiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
 
   override lazy val repository = new AsyncRepository {
 
