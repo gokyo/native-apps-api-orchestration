@@ -67,7 +67,8 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
                                          override val genericConnector: GenericConnector,
                                          override val auditConnector: AuditConnector,
                                          override val authConnector: AuthConnector,
-                                         @Named("controllers.confidenceLevel") override val confLevel: Int)
+                                         @Named("controllers.confidenceLevel") override val confLevel: Int,
+                                         @Named("routeToTwoFactorAlwaysFalse") val routeToTwoFactorAlwaysFalse: Boolean)
   extends OrchestrationService with Authorisation with ExecutorFactory with Auditor with ConfiguredCampaigns {
 
   override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
@@ -80,7 +81,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
         val mfaURI: Option[MfaURI] = mfaOutcome.fold(Option.empty[MfaURI]){ _.mfa}
         // If authority has been updated then override the original accounts response from auth.
         val returnAccounts = mfaOutcome.fold(accounts) { found =>
-          if (found.authUpdated)
+          if (routeToTwoFactorAlwaysFalse || found.authUpdated)
             accounts.copy(routeToTwoFactor = false)
           else {
             accounts.copy(routeToTwoFactor = found.routeToTwoFactor)
