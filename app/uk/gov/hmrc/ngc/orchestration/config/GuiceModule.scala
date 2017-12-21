@@ -33,10 +33,9 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
 
   override def configure(): Unit = {
 
+    bind(classOf[ServiceLocatorConnector]).to(classOf[ApiServiceLocatorConnector]).asEagerSingleton()
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
     bind(classOf[AuthConnector]).to(classOf[MicroserviceAuthConnector])
-    bind(classOf[ServiceLocatorConnector]).to(classOf[ApiServiceLocatorConnector]).asEagerSingleton()
-//    bind(classOf[HttpRequestHandler]).to(classOf[RoutingHttpRequestHandler]).asEagerSingleton()
     bind(classOf[DocumentationController]).toInstance(DocumentationController)
 
     bindConfigInt("supported.generic.service.max")
