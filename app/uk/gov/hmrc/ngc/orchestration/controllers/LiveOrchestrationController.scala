@@ -16,10 +16,9 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
-import javax.inject.{Named, Singleton}
+import javax.inject.{Inject, Named, Provider, Singleton}
 
 import akka.actor.ActorSystem
-import com.google.inject.Inject
 import play.api.{Configuration, Logger}
 import play.api.http.HeaderNames
 import play.api.inject.ApplicationLifecycle
@@ -184,12 +183,12 @@ class LiveOrchestrationController  @Inject()(
   override val service: LiveOrchestrationService,
   override val actorSystem: ActorSystem,
   override val lifecycle: ApplicationLifecycle,
-  val reactiveMongo: ReactiveMongoComponent,
+  val reactiveMongo: Provider[ReactiveMongoComponent],
   @Named("supported.generic.service.max") override val serviceMax: Int,
   @Named("supported.generic.event.max") override val eventMax: Int,
   @Named("controllers.confidenceLevel") override val confLevel: Int,
   @Named("poll.success.maxAge") override val maxAgeForSuccess: Int) extends NativeAppsOrchestrationController {
 
   override val app: String = "Live-Orchestration-Controller"
-  override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.mongoConnector.db)
+  override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.get().mongoConnector.db)
 }

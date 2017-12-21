@@ -53,7 +53,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     implicit val mockAuthConnector: AuthConnector = mock[AuthConnector]
     implicit val executorFactory: ExecutorFactory = new ExecutorFactory(mockGenericConnector, mockAuditConnector, fakeApplication.configuration)
     lazy val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, executorFactory, mockGenericConnector,
-                                                                 fakeApplication.configuration ,mockAuditConnector, mockAuthConnector, 200)
+                                                                 fakeApplication.configuration ,mockAuditConnector, mockAuthConnector, 200, false)
   }
   
   implicit val hc: HeaderCarrier = HeaderCarrier()

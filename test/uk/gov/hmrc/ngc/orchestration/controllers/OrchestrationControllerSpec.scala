@@ -18,6 +18,7 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import javax.inject.Provider
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -27,10 +28,8 @@ import org.mockito.Mockito.when
 import org.mockito.stubbing.OngoingStubbing
 import org.scalatest.concurrent.Eventually
 import org.scalatest.mockito.MockitoSugar
-import play.api.Play.current
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.inject.ApplicationLifecycle
-import play.api.libs.concurrent.Akka
 import play.api.libs.json._
 import play.api.mvc
 import play.api.mvc.{AnyContentAsEmpty, AnyContentAsJson}
@@ -56,7 +55,6 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with MockitoSugar {
 
-
   trait mocks {
     implicit val mockMFAIntegration: MFAIntegration = mock[MFAIntegration]
     implicit val mockGenericConnector: GenericConnector = mock[GenericConnector]
@@ -64,16 +62,16 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     implicit val mockAuthConnector: AuthConnector = mock[AuthConnector]
     implicit val executorFactory: ExecutorFactory = new ExecutorFactory(mockGenericConnector, mockAuditConnector, fakeApplication.configuration)
     lazy val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, executorFactory, mockGenericConnector,
-      fakeApplication.configuration ,mockAuditConnector, mockAuthConnector, 200)
+      fakeApplication.configuration ,mockAuditConnector, mockAuthConnector, 200, false)
   }
 
 
   implicit val materializer: ActorMaterializer = ActorMaterializer()(ActorSystem())
   implicit val hc: HeaderCarrier = HeaderCarrier()
 
-  lazy val actorSystem: ActorSystem = Akka.system
-  lazy val lifecycle: ApplicationLifecycle = current.injector.instanceOf[ApplicationLifecycle]
-  lazy val reactiveMongo: ReactiveMongoComponent = current.injector.instanceOf[ReactiveMongoComponent]
+  lazy val actorSystem: ActorSystem = fakeApplication.actorSystem
+  lazy val lifecycle: ApplicationLifecycle = fakeApplication.injector.instanceOf[ApplicationLifecycle]
+  lazy val reactiveMongo: ReactiveMongoComponent = fakeApplication.injector.instanceOf[ReactiveMongoComponent]
 
   val mockLiveOrchestrationService: LiveOrchestrationService = mock[LiveOrchestrationService]
 
@@ -193,7 +191,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return status code 406 when the headers are invalid" in new mocks {
-      val controller = new LiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000)
+      val controller = new LiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, new TestProvider[ReactiveMongoComponent](reactiveMongo), 10, 10, 200, 30000)
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithoutHeaders))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 406
       Json.stringify(jsonBodyOf(response)) shouldBe """{"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"}"""

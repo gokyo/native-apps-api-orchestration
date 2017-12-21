@@ -16,6 +16,8 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
+import javax.inject.Provider
+
 import akka.actor.ActorSystem
 import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
@@ -30,8 +32,12 @@ import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 
 import scala.concurrent.Future
 
+class TestProvider[T](obj: T) extends Provider[T] {
+  override def get(): T = obj
+}
+
 class TestLiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, reactiveMongo: ReactiveMongoComponent, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
-  LiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
+  LiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, new TestProvider[ReactiveMongoComponent](reactiveMongo), serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
 
   override lazy val repository = new AsyncRepository {
 

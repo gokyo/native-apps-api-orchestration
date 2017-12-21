@@ -23,7 +23,6 @@ crossScalaVersions := Seq("2.11.11")
 libraryDependencies ++= AppDependencies()
 retrieveManaged := true
 evictionWarningOptions in update := EvictionWarningOptions.default.withWarnScalaVersionEviction(false)
-routesGenerator := StaticRoutesGenerator
 
 Keys.fork in IntegrationTest := false
 unmanagedSourceDirectories in IntegrationTest := (baseDirectory in IntegrationTest)(base => Seq(base / "it")).value

@@ -16,13 +16,14 @@
 
 package uk.gov.hmrc.ngc.orchestration.config
 
+import com.google.inject.name.Names.named
 import com.google.inject.{AbstractModule, TypeLiteral}
-import com.google.inject.name.Names
 import play.api.Mode.Mode
 import play.api.{Configuration, Environment}
+import uk.gov.hmrc.api.connector.ServiceLocatorConnector
+import uk.gov.hmrc.api.controllers.DocumentationController
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.{SandboxOrchestrationController, SandboxOrchestrationControllerImpl}
-import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.config.ServicesConfig
 
 class GuiceModule(environment: Environment, configuration: Configuration) extends AbstractModule with ServicesConfig {
@@ -33,8 +34,10 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
   override def configure(): Unit = {
 
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
-
     bind(classOf[AuthConnector]).to(classOf[MicroserviceAuthConnector])
+    bind(classOf[ServiceLocatorConnector]).to(classOf[ApiServiceLocatorConnector]).asEagerSingleton()
+//    bind(classOf[HttpRequestHandler]).to(classOf[RoutingHttpRequestHandler]).asEagerSingleton()
+    bind(classOf[DocumentationController]).toInstance(DocumentationController)
 
     bindConfigInt("supported.generic.service.max")
     bindConfigInt("supported.generic.event.max")
@@ -42,6 +45,8 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
     bindConfigInt("poll.success.maxAge")
 
     bindConfigStringSeq("scopes")
+
+    bindConfigBoolean("routeToTwoFactorAlwaysFalse")
   }
 
   /**
@@ -49,14 +54,18 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
     * Throws an exception if the configuration value does not exist or cannot be read as an Int.
     */
   private def bindConfigInt(path: String): Unit = {
-    bindConstant().annotatedWith(Names.named(path))
+    bindConstant().annotatedWith(named(path))
       .to(configuration.underlying.getInt(path))
+  }
+
+  private def bindConfigBoolean(path: String): Unit = {
+    bindConstant().annotatedWith(named(path)).to(configuration.underlying.getBoolean(path))
   }
 
   private def bindConfigStringSeq(path: String): Unit = {
     val configValue: Seq[String] = configuration.getStringSeq(path).getOrElse(throw new RuntimeException(s"""Config property "$path" missing"""))
     bind(new TypeLiteral[Seq[String]] {})
-      .annotatedWith(Names.named(path))
+      .annotatedWith(named(path))
       .toInstance(configValue)
   }
 }
