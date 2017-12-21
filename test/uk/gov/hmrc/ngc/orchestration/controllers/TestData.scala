@@ -25,11 +25,13 @@ object TestData {
 
   def responseTicket : JsValue = Json.parse(s"""{"ticket_id": 1980683879}""")
 
-  val taxCreditRenewalsStateOpen = Json.parse("""{"submissionState":true, "submissionsState":"open"}""")
+  val taxCreditRenewalsStateOpen: JsValue = Json.parse("""{"submissionState":true, "submissionsState":"open"}""")
   val testTaxCreditDecision: JsValue = Json.parse("""{"showData":true}""")
-  val testPushReg = JsNull
+  val helpToSaveStartupResponse: JsValue = Json.obj("thisIs" -> "some help to save data")
 
-  val pollResponse = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
+  val testPushReg: JsValue = JsNull
+
+  val pollResponse: JsValue = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
 
   def taxSummaryData(additional:Option[String]=None) : JsValue = Json.parse(
     s"""{
@@ -509,9 +511,9 @@ object TestData {
       |}
     """.stripMargin)
 
-  val statusThrottle = Json.obj("status" -> Json.parse("""{"code": "throttle"}"""))
+  val statusThrottle: JsValue = Json.obj("status" -> Json.parse("""{"code": "throttle"}"""))
 
-  val taxCreditSummaryData = Json.parse(
+  val taxCreditSummaryData: JsValue = Json.parse(
     """
       |{
       |  "paymentSummary": {
@@ -600,9 +602,9 @@ object TestData {
       |  }
     """.stripMargin)
 
-  val sandboxStartupResponse = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
+  val sandboxStartupResponse: JsValue = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
 
-  val sandboxPollResponse =
+  val sandboxPollResponse: String =
     """
       |{
       |  "taxSummary": {
