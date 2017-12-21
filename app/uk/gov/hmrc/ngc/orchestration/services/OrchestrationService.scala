@@ -126,7 +126,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
 
     for (results <- sequence(futuresSeq).map(_.flatten)) yield {
       val response = results.map(b => Json.obj(b.id -> b.jsValue))
-      val campaigns = configuredCampaigns(hasData, response.foldLeft(Json.obj())((obj, a) => obj.deepMerge(a.as[JsObject])))
+      val campaigns = configuredCampaigns(hasData, response.foldLeft(Json.obj())((obj, a) => obj ++ a))
       response ++ (if(!campaigns.isEmpty) Seq(Json.obj("campaigns" -> Json.toJson(campaigns))) else Seq.empty)
     }
   }
