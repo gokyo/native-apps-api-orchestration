@@ -93,14 +93,14 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
   }
 
   override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
-    grantAccess(nino).map { _ ⇒
+    grantAccess(nino).flatMap { _ ⇒
       request match {
         case OrchestrationServiceRequest(None, Some(orchestrationRequest)) ⇒
           buildAndExecute(orchestrationRequest, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
         case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
           startup(legacyRequest, nino, journeyId)
       }
-    }.flatMap(response ⇒ response)
+    }
   }
 
   override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject]= {

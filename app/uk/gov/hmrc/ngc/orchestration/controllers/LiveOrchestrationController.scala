@@ -84,6 +84,10 @@ trait NativeAppsOrchestrationController extends AsyncController with Auditor wit
               Logger.info(s"Background HC: ${hc.authorization.fold("not found")(_.value)} for Journey Id $journeyId")
               service.orchestrate(valid, reqNino, journeyId).map { response ⇒
                 AsyncResponse( response ++ buildResponseCode(ResponseStatus.complete), reqNino)
+              }.recover{
+                case e: GrantAccessException =>
+                  Logger.info(e.getMessage)
+                  AsyncResponse(buildResponseCode(ResponseStatus.error), reqNino)
               }
             }
           }
