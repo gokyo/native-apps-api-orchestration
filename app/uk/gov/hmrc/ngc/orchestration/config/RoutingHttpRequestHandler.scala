@@ -42,8 +42,12 @@ class RoutingHttpRequestHandler @Inject()(router: Router, errorHandler: HttpErro
   }
 
   override def routeRequest(request: RequestHeader): Option[Handler] = {
-    val overrideRequest = routing.fold(request) {
-      routing ⇒ request.headers.get(routing._1) match {
+    super.routeRequest(overrideRouting(request))
+  }
+
+  def overrideRouting(request: RequestHeader) : RequestHeader = {
+    routing.fold(request) { routing ⇒
+      request.headers.get(routing._1) match {
         case Some(value) ⇒ {
           val found = new Regex(routing._2) findFirstIn value
           found.fold(request) {
@@ -56,6 +60,5 @@ class RoutingHttpRequestHandler @Inject()(router: Router, errorHandler: HttpErro
         case _ ⇒ request
       }
     }
-    super.routeRequest(overrideRequest)
   }
 }
