@@ -43,23 +43,23 @@ case class OrchestrationServiceRequest(requestLegacy: Option[JsValue], request: 
 case class DeviceVersion(os : String, version : String)
 
 object DeviceVersion {
-  implicit val formats = Json.format[DeviceVersion]
+  implicit val formats: Format[DeviceVersion] = Json.format[DeviceVersion]
 }
 
 case class PreFlightRequest(os: String, version:String, mfa:Option[MFARequest])
 
 object PreFlightRequest {
-  implicit val mfa = MFARequest.formats
-  implicit val formats = Json.format[PreFlightRequest]
+  implicit val mfa: Format[MFARequest] = MFARequest.formats
+  implicit val formats: Format[PreFlightRequest] = Json.format[PreFlightRequest]
 }
 
 trait OrchestrationService {
 
-  def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = ???
+  def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse]
 
-  def startup(inputRequest:JsValue, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject] = ???
+  def startup(inputRequest:JsValue, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject]
 
-  def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject] = ???
+  def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject]
 }
 
 @Singleton
@@ -95,14 +95,14 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
   }
 
   override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
-    grantAccess(nino).map { _ ⇒
+    grantAccess(nino).flatMap { _ ⇒
       request match {
         case OrchestrationServiceRequest(None, Some(request)) ⇒
           executorFactory.buildAndExecute(request, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
         case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
           startup(legacyRequest, nino, journeyId)
       }
-    }.flatMap(response ⇒ response)
+    }
   }
 
   override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject]= {
@@ -123,13 +123,14 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
       TaxCreditSummary(genericConnector, journeyId),
       TaxCreditsSubmissionState(genericConnector, journeyId),
       TaxCreditsRenewals(genericConnector, journeyId),
-      PushRegistration(genericConnector, inputRequest, journeyId)
+      PushRegistration(genericConnector, inputRequest, journeyId),
+      HelpToSaveStartup(Logger, genericConnector)
     ).map(item => item.execute(nino, year))
 
     for (results <- sequence(futuresSeq).map(_.flatten)) yield {
       val response = results.map(b => Json.obj(b.id -> b.jsValue))
-      val campaigns = configuredCampaigns(hasData, response.foldLeft(Json.obj())((obj, a) => obj.deepMerge(a.as[JsObject])))
-      response ++ (if(!campaigns.isEmpty) Seq(Json.obj("campaigns" -> Json.toJson(campaigns))) else Seq.empty)
+      val campaigns = configuredCampaigns(hasData, response.foldLeft(Json.obj())((obj, a) => obj ++ a))
+      response ++ (if(campaigns.nonEmpty) Seq(Json.obj("campaigns" -> Json.toJson(campaigns))) else Seq.empty)
     }
   }
 
@@ -181,24 +182,23 @@ class SandboxOrchestrationService @Inject() (genericConnector: GenericConnector,
   }
 
 
-  def recordGenericServiceExecution(orchestrationRequest: OrchestrationRequest, journeyId: Option[String])(implicit hc: HeaderCarrier) = {
+  private def recordGenericServiceExecution(orchestrationRequest: OrchestrationRequest, journeyId: Option[String])(implicit hc: HeaderCarrier) = {
     val eventRequest = for {
       request ← orchestrationRequest.eventRequest.getOrElse(Seq.empty[ExecutorRequest])
-    } yield (request.name)
+    } yield request.name
     val serviceRequest = for {
       request ← orchestrationRequest.serviceRequest.getOrElse(Seq.empty[ExecutorRequest])
-    } yield (request.name)
+    } yield request.name
     val all = serviceRequest.union(eventRequest)
     cache.put(journeyId.getOrElse("genericExecution"), all.mkString("|"))
   }
 
   override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
     request match {
-      case OrchestrationServiceRequest(None, Some(orchestrationRequest)) ⇒  {
+      case OrchestrationServiceRequest(None, Some(orchestrationRequest)) ⇒
         recordGenericServiceExecution(orchestrationRequest, journeyId)(hc)
         successful(Json.obj("status" → Json.obj("code" → "poll")))
-      }
-      case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒ successful(Json.obj("status" → Json.obj("code" → "poll")))
+      case OrchestrationServiceRequest(Some(_), None) ⇒ successful(Json.obj("status" → Json.obj("code" → "poll")))
       case _ ⇒ Future.successful(Json.obj("status" → Json.obj("code" → "error")))
     }
   }

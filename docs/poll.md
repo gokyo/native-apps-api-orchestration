@@ -33,6 +33,10 @@ On success the below JSON will be returned. Please see notes below detailing the
 
 ```
 {
+  "helpToSave": {
+    "enabled": true,
+    "infoUrl": "https://www.gov.uk/government/publications/help-to-save-what-it-is-and-who-its-for/the-help-to-save-scheme"
+  },
   "taxSummary": {
     // see https://github.com/hmrc/personal-income/blob/master/docs/tax-summary.md
   },

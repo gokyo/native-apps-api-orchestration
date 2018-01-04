@@ -22,7 +22,7 @@ import uk.gov.hmrc.api.controllers._
 import uk.gov.hmrc.auth.core.AuthorisationException
 import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException, Upstream4xxResponse}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
-
+import uk.gov.hmrc.http.HttpException
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -40,15 +40,17 @@ case object ForbiddenAccess extends ErrorResponse(403, "UNAUTHORIZED", "Access d
 
 case object ErrorUnauthorizedWeakCredStrength extends ErrorResponse(401, "WEAK_CRED_STRENGTH", "Credential Strength on account does not allow access")
 
-class BadRequestException(message:String) extends uk.gov.hmrc.http.HttpException(message, 400)
+class BadRequestException(message:String) extends HttpException(message, 400)
 
-class FailToMatchTaxIdOnAuth(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class GrantAccessException(message: String) extends HttpException(message, 401)
 
-class NinoNotFoundOnAccount(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class FailToMatchTaxIdOnAuth extends GrantAccessException("Unauthorised! Failure to match URL NINO against Auth NINO")
 
-class AccountWithLowCL(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class NinoNotFoundOnAccount extends GrantAccessException("Unauthorised! NINO not found on account!")
 
-class AccountWithWeakCredStrength(message:String) extends uk.gov.hmrc.http.HttpException(message, 401)
+class AccountWithLowCL extends GrantAccessException("Unauthorised! Account with low CL!")
+
+class AccountWithWeakCredStrength(message:String) extends HttpException(message, 401)
 
 
 trait ErrorHandling {
@@ -69,15 +71,15 @@ trait ErrorHandling {
         Status(ErrorBadRequest.httpStatusCode)(Json.toJson(ErrorBadRequest))
 
       case ex: NinoNotFoundOnAccount ⇒
-        Logger.info("Unauthorised! NINO not found on account!")
+        Logger.info(ex.message)
         Unauthorized(Json.toJson(ErrorUnauthorizedNoNino))
 
       case ex: FailToMatchTaxIdOnAuth ⇒
-        Logger.info("Unauthorised! Failure to match URL NINO against Auth NINO")
+        Logger.info(ex.message)
         Status(ErrorUnauthorized.httpStatusCode)(Json.toJson(ErrorUnauthorized))
 
       case ex: AccountWithLowCL ⇒
-        Logger.info("Unauthorised! Account with low CL!")
+        Logger.info(ex.message)
         Unauthorized(Json.toJson(ErrorUnauthorizedLowCL))
 
       case ex: AccountWithWeakCredStrength ⇒

@@ -17,13 +17,14 @@
 package uk.gov.hmrc.ngc.orchestration.services
 
 import play.api.libs.json._
-import play.api.{Configuration, Logger, Play}
+import play.api.{Logger, LoggerLike}
 import uk.gov.hmrc.http.{HeaderCarrier, Upstream4xxResponse}
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.ResponseCode
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.control.NonFatal
 
 trait Executor {
   val id: String
@@ -33,7 +34,7 @@ trait Executor {
 
   def logJourneyId(journeyId: Option[String]) = s"Native Error - ${journeyId.fold("no Journey id supplied")(id => id)}"
 
-  def buildJourneyQueryParam(journeyId: Option[String]) = journeyId.fold("")(id => s"?journeyId=$id")
+  def buildJourneyQueryParam(journeyId: Option[String]): String = journeyId.fold("")(id => s"?journeyId=$id")
 }
 
 case class TaxSummary(connector: GenericConnector, journeyId: Option[String]) extends Executor with ResponseCode {
@@ -93,7 +94,7 @@ case class PushRegistration(connector: GenericConnector, inputRequest:JsValue, j
   override val serviceName = "push-registration"
   override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
 
-    if ((inputRequest \ "token").asOpt[String] == None) {
+    if ((inputRequest \ "token").asOpt[String].isEmpty) {
       Logger.info(s"${logJourneyId(journeyId)} - No token supplied!")
     } else {
       // Note: Fire and forget!
@@ -187,6 +188,20 @@ case class TaxCreditSummary(connector: GenericConnector, journeyId: Option[Strin
           None
     }
   }
+}
+
+case class HelpToSaveStartup(logger: LoggerLike, connector: GenericConnector) extends Executor {
+  override val id: String = "helpToSave"
+  override val serviceName: String = "mobile-help-to-save"
+
+  override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] =
+    connector.doGet(serviceName, "/mobile-help-to-save/startup", hc) map { json =>
+      Some(Result(id, json))
+    } recover {
+      case NonFatal(e) =>
+        logger.warn(s"""Exception thrown by "/mobile-help-to-save/startup", not returning any $id result""", e)
+        None
+    }
 }
 
 case class Mandatory() extends Exception
