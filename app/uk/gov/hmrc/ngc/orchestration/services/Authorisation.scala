@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,9 +53,9 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
   }
 
   def grantAccess(requestedNino: Nino)(implicit hc: HeaderCarrier) = {
-    lazy val ninoNotFoundOnAccount = new NinoNotFoundOnAccount("The user must have a National Insurance Number")
-    lazy val failedToMatchNino = new FailToMatchTaxIdOnAuth("The nino in the URL failed to match auth!")
-    lazy val lowConfidenceLevel = new AccountWithLowCL("The user does not have sufficient CL permissions to access this service")
+    lazy val ninoNotFoundOnAccount = new NinoNotFoundOnAccount
+    lazy val failedToMatchNino = new FailToMatchTaxIdOnAuth
+    lazy val lowConfidenceLevel = new AccountWithLowCL
 
     authorised(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", requestedNino.value)), "Activated", None) and CredentialStrength(CredentialStrength.strong))
       .retrieve(nino and confidenceLevel) {

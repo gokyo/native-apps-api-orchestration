@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 HM Revenue & Customs
+ * Copyright 2018 HM Revenue & Customs
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -93,14 +93,14 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
   }
 
   override def orchestrate(request: OrchestrationServiceRequest, nino: Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject] = {
-    grantAccess(nino).map { _ ⇒
+    grantAccess(nino).flatMap { _ ⇒
       request match {
         case OrchestrationServiceRequest(None, Some(orchestrationRequest)) ⇒
           buildAndExecute(orchestrationRequest, nino.value, journeyId).map(obj ⇒ Json.obj("OrchestrationResponse" → obj))
         case OrchestrationServiceRequest(Some(legacyRequest), None) ⇒
           startup(legacyRequest, nino, journeyId)
       }
-    }.flatMap(response ⇒ response)
+    }
   }
 
   override def startup(inputRequest:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[JsObject]= {
