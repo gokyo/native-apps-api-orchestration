@@ -30,9 +30,9 @@ import uk.gov.hmrc.msasync.config.CookieSessionFilter
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.auth.controllers.AuthParamsControllerConfig
 import uk.gov.hmrc.play.config.{AppName, ControllerConfig, RunMode}
-import uk.gov.hmrc.play.filters.{MicroserviceFilterSupport, NoCacheFilter}
+import uk.gov.hmrc.play.filters.MicroserviceFilterSupport
 import uk.gov.hmrc.play.microservice.bootstrap.DefaultMicroserviceGlobal
-import uk.gov.hmrc.play.microservice.filters.{AuditFilter, LoggingFilter}
+import uk.gov.hmrc.play.microservice.filters.{AuditFilter, LoggingFilter, NoCacheFilter}
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -78,6 +78,7 @@ object MicroserviceGlobal extends DefaultMicroserviceGlobal with RunMode with Se
 
   override def doFilter(a: EssentialAction): EssentialAction = {
     // Note: Add the session filter to the controller in order for session cookie handling.
+    // remove the no-cache filter
     Filters(super.doFilter(a), defaultMicroserviceFilters.filterNot( _.isInstanceOf[NoCacheFilter.type] ) ++ sessionFilter : _*)
   }
 

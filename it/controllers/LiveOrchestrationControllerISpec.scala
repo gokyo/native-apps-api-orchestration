@@ -275,6 +275,8 @@ trait BaseLiveOrchestrationControllerISpec extends BaseISpec {
         """[{"campaignId": "HELP_TO_SAVE_1", "enabled": true, "minimumViews": 5, "dismissDays": 15, "requiredData": "workingTaxCredit"}]"""
       )
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
+
+      pollResponse.allHeaders("Cache-Control").head shouldBe "max-age=14400"
     }
 
     "return a http 200 status with a body status code 'poll' for an authenticated user, " +
@@ -371,6 +373,8 @@ trait BaseLiveOrchestrationControllerISpec extends BaseISpec {
       (pollResponse.json \ "state"\ "enableRenewals").as[Boolean] shouldBe true
       (pollResponse.json \ "taxCreditRenewals"\ "submissionsState").as[String] shouldBe "open"
       Json.stringify((pollResponse.json \\ "status").head) shouldBe """{"code":"complete"}"""
+
+      pollResponse.allHeaders("Cache-Control").head shouldBe "max-age=14400"
     }
   }
 
