@@ -27,13 +27,13 @@ import uk.gov.hmrc.ngc.orchestration.config.WSHttp
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class GenericConnector @Inject() (configuration: Configuration) {
+class GenericConnector @Inject() (configuration: Configuration, wSHttp: WSHttp) {
 
   def host(serviceName: String) = getConfigProperty(serviceName, "host")
 
   def port(serviceName: String) = getConfigProperty(serviceName, "port").toInt
 
-  def http: CorePost with CoreGet = WSHttp
+  def http: CorePost with CoreGet = wSHttp
 
   def logHC(hc: HeaderCarrier, path:String) =   Logger.info(s"transport: HC received is ${hc.authorization} for path $path")
 

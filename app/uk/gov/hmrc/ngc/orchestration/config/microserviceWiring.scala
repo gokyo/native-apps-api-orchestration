@@ -16,30 +16,41 @@
 
 package uk.gov.hmrc.ngc.orchestration.config
 
-import javax.inject.Singleton
-
+import com.google.inject.{Inject, Singleton}
+import play.api.Mode.Mode
+import play.api.{Configuration, Environment, Logger}
+import uk.gov.hmrc.api.config.ServiceLocatorConfig
+import uk.gov.hmrc.api.connector.ServiceLocatorConnector
 import uk.gov.hmrc.auth.core.PlayAuthConnector
-import uk.gov.hmrc.http.{HttpGet, HttpPost}
-import uk.gov.hmrc.play.audit.http.connector.AuditConnector
+import uk.gov.hmrc.http.{CorePost, HttpGet, HttpPost}
+import uk.gov.hmrc.play.bootstrap.config.AppName
 import uk.gov.hmrc.play.config.{RunMode, ServicesConfig}
 import uk.gov.hmrc.play.http.ws.{WSGet, WSPost}
-import uk.gov.hmrc.play.microservice.config.LoadAuditingConfig
 
 
-trait WSHttp extends HttpGet with HttpPost with WSGet with WSPost with RunMode {
+@Singleton
+class WSHttp @Inject() (override val runModeConfiguration: Configuration, environment: Environment) extends HttpGet with HttpPost with WSGet with WSPost with RunMode {
   override val hooks = NoneRequired
-}
-
-object WSHttp extends WSHttp
-
-object MicroserviceAuditConnector extends AuditConnector with RunMode {
-  override lazy val auditingConfig = LoadAuditingConfig(s"auditing")
+  override protected def mode = environment.mode
 }
 
 @Singleton
-class MicroserviceAuthConnector extends PlayAuthConnector with ServicesConfig {
+class MicroserviceAuthConnector @Inject()(override val runModeConfiguration: Configuration, environment: Environment, wsHttp: WSHttp) extends PlayAuthConnector with ServicesConfig {
   override lazy val serviceUrl = baseUrl("auth")
-  override def http = WSHttp
+  override def http = wsHttp
+  override protected def mode = environment.mode
 }
 
+@Singleton
+class ApiServiceLocatorConnector @Inject()(override val runModeConfiguration: Configuration, environment: Environment, wsHttp: WSHttp)
+  extends ServiceLocatorConnector with ServiceLocatorConfig with AppName {
+  override val appUrl: String = runModeConfiguration.getString("appUrl").getOrElse(throw new RuntimeException("appUrl is not configured"))
+  override val serviceUrl: String = serviceLocatorUrl
+  override val handlerOK: () ⇒ Unit = () ⇒ Logger.info("Service is registered on the service locator")
+  override val handlerError: Throwable ⇒ Unit = e ⇒ Logger.error("Service could not register on the service locator", e)
+  override val metadata: Option[Map[String, String]] = Some(Map("third-party-api" → "true"))
+  override val http: CorePost = wsHttp
+  override def configuration: Configuration = runModeConfiguration
+  override protected def mode: Mode = environment.mode
+}
 

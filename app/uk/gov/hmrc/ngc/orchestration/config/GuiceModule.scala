@@ -20,9 +20,10 @@ import com.google.inject.name.Names.named
 import com.google.inject.{AbstractModule, TypeLiteral}
 import play.api.Mode.Mode
 import play.api.{Configuration, Environment}
+import uk.gov.hmrc.api.connector.ServiceLocatorConnector
+import uk.gov.hmrc.api.controllers.DocumentationController
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.{SandboxOrchestrationController, SandboxOrchestrationControllerImpl}
-import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.config.ServicesConfig
 
 class GuiceModule(environment: Environment, configuration: Configuration) extends AbstractModule with ServicesConfig {
@@ -32,17 +33,14 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
 
   override def configure(): Unit = {
 
+    bind(classOf[ServiceLocatorConnector]).to(classOf[ApiServiceLocatorConnector]).asEagerSingleton()
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
-
     bind(classOf[AuthConnector]).to(classOf[MicroserviceAuthConnector])
-
-    bind(classOf[AuditConnector]).toInstance(MicroserviceAuditConnector)
+    bind(classOf[DocumentationController]).toInstance(DocumentationController)
 
     bindConfigInt("supported.generic.service.max")
     bindConfigInt("supported.generic.event.max")
-
     bindConfigInt("controllers.confidenceLevel")
-
     bindConfigInt("poll.success.maxAge")
 
     bindConfigStringSeq("scopes")

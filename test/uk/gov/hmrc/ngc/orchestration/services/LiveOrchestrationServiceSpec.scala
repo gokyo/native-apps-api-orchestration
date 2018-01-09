@@ -35,6 +35,7 @@ import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier, Upstream4xxResp
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.TestData
 import uk.gov.hmrc.ngc.orchestration.domain._
+import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.model.DataEvent
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
@@ -51,6 +52,9 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     implicit val mockGenericConnector: GenericConnector = mock[GenericConnector]
     implicit val mockAuditConnector: AuditConnector = mock[AuditConnector]
     implicit val mockAuthConnector: AuthConnector = mock[AuthConnector]
+    implicit val executorFactory: ExecutorFactory = new ExecutorFactory(mockGenericConnector, mockAuditConnector, fakeApplication.configuration)
+    lazy val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, executorFactory, mockGenericConnector,
+                                                                 fakeApplication.configuration ,mockAuditConnector, mockAuthConnector, 200, false)
   }
   
   implicit val hc: HeaderCarrier = HeaderCarrier()
@@ -164,7 +168,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubPOSTGenericConnectorFailure(s"$versionCheck$journeyId", 500)
       when(mockMFAIntegration.mfaDecision(any[Accounts], eqs(None), any[Option[String]])(any[HeaderCarrier]))
         .thenReturn(Future successful Some(MFAAPIResponse(routeToTwoFactor = false, mfa = None, authUpdated = false)))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response = await(liveOrchestrationService.preFlightCheck(PreFlightRequest(os = "ios or android", version = "n.n.n", None), Some(randomUUID)))
       response.upgradeRequired shouldBe false
     }
@@ -182,7 +185,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       response.keys should contain("helpToSave")
       response \ "helpToSave" shouldBe JsDefined(TestData.helpToSaveStartupResponse)
@@ -199,7 +201,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubPOSTGenericConnectorResponse(pushRegistration, TestData.testPushReg)
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       response.keys should not contain "helpToSave"
     }
@@ -224,7 +225,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
                           |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
                           |}""".stripMargin
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 0
@@ -252,7 +252,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
                    |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
                    |}""".stripMargin
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 0
@@ -280,7 +279,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
                    |  "token": "cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"
                    |}""".stripMargin
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 0
@@ -299,7 +297,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", TestData.helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 1
@@ -317,7 +314,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", TestData.helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 1
@@ -337,7 +333,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", TestData.helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").head  shouldBe Json.obj()
       (response \\ "taxCreditSummary").head shouldBe Json.obj()
@@ -355,7 +350,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", TestData.helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(Json.obj()), None)
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").head  shouldBe Json.obj()
       (response \\ "taxCreditSummary").head shouldBe Json.obj()
@@ -374,7 +368,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","responseData":{"ticket_id":1980683879},"failure":false}]}}"""
     }
@@ -386,7 +379,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","failure":true,"timeout":false}]}}"""
     }
@@ -400,7 +392,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val feedbackRequest_3 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_3" → "Some feedback data C")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest_1, feedbackRequest_2, feedbackRequest_3)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","failure":true,"timeout":false},{"name":"deskpro-feedback","failure":true,"timeout":false},{"name":"deskpro-feedback","failure":true,"timeout":false}]}}"""
     }
@@ -419,7 +410,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val feedbackRequest_5 = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id_5" → "Some feedback data E")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest_1, feedbackRequest_2, feedbackRequest_3, feedbackRequest_4, feedbackRequest_5)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","responseData":{"ticket_id":111111111},"failure":false},{"name":"deskpro-feedback","responseData":{"ticket_id":222222222},"failure":false},{"name":"deskpro-feedback","responseData":{"ticket_id":333333333},"failure":false},{"name":"deskpro-feedback","failure":true,"timeout":false},{"name":"deskpro-feedback","failure":true,"timeout":false}]}}"""
     }
@@ -431,7 +421,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","failure":true,"timeout":true}]}}"""
     }
@@ -443,7 +432,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val pushNotificationGetMessageRequest = ExecutorRequest(name = "push-notification-get-message", data = Some(Json.obj("messageId" → pushNotificationMessageId)))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(pushNotificationGetMessageRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"push-notification-get-message","responseData":{"id":"msg-some-id","subject":"Weather","body":"Is it raining?","responses":{"yes":"Yes","no":"No"}},"failure":false}]}}"""
     }
@@ -455,7 +443,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val pushNotificationGetMessageRequest = ExecutorRequest(name = "push-notification-respond-to-message", data = Some(Json.obj("messageId" → pushNotificationMessageId)))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(pushNotificationGetMessageRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(Json.toJson(response)) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"push-notification-respond-to-message","responseData":{},"failure":false}]}}"""
     }
@@ -470,7 +457,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.toJson(response) shouldBe Json.parse(findResource("/resources/generic/tax-credit-claimant-details-response.json").get)
     }
@@ -487,7 +473,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
       val expectedResponse = Json.obj("OrchestrationResponse" → OrchestrationResponse(serviceResponse = Some(Seq(ExecutorResponse("claimant-details", Some((responseJson \\ "firstCall").head), failure = Some(false))))))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.toJson(response) shouldBe Json.toJson(expectedResponse)
     }
@@ -504,7 +489,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
       val expectedResponse = Json.obj("OrchestrationResponse" → OrchestrationResponse(serviceResponse = Some(Seq(ExecutorResponse("claimant-details", Some((responseJson \\ "firstCall").head), failure = Some(false))))))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.toJson(response) shouldBe Json.toJson(expectedResponse)
     }
@@ -516,7 +500,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val versionRequest = ExecutorRequest(name = "version-check", data = Some(Json.obj("os" → "ios or android", "version" → "n.n.n")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(versionRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       Json.stringify(response) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"version-check","responseData":{"upgrade":false},"failure":false}]}}"""
     }
@@ -531,7 +514,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
         "auditType" → "TCSPayments")))
       val orchestrationRequest = new OrchestrationRequest(None, eventRequest = Some(Seq(auditEventRequest)))
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       verify(mockAuditConnector, times(1)).sendEvent(any[DataEvent]())(any[HeaderCarrier](), any[ExecutionContext]())
       Json.stringify(response) shouldBe """{"OrchestrationResponse":{"eventResponse":[{"name":"ngc-audit-event","failure":false}]}}"""
@@ -549,7 +531,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val feedbackRequest = ExecutorRequest(name = "deskpro-feedback", data = Some(Json.obj("some-id" → "Some feedback data")))
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(feedbackRequest)), eventRequest = Some(Seq(auditEventRequest)))
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val liveOrchestrationService = new LiveOrchestrationService(mockMFAIntegration, mockGenericConnector, mockAuditConnector, mockAuthConnector, 200, false)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       verify(mockAuditConnector, times(1)).sendEvent(any[DataEvent]())(any[HeaderCarrier](), any[ExecutionContext]())
       Json.stringify(response) shouldBe """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","responseData":{"ticket_id":1980683879},"failure":false}],"eventResponse":[{"name":"ngc-audit-event","failure":false}]}}"""
