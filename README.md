@@ -11,7 +11,6 @@ The following services are exposed from the micro-service.
 
 Please note it is mandatory to supply an Accept HTTP header to all below services with the value ```application/vnd.hmrc.1.0+json```.
 
-
 API
 ---
 
