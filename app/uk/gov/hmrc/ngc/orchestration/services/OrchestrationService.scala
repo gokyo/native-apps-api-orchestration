@@ -16,12 +16,12 @@
 
 package uk.gov.hmrc.ngc.orchestration.services
 
-import java.util.UUID
+import java.util.UUID.randomUUID
 
 import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
-import play.api.{Configuration, Logger}
 import play.api.libs.json._
+import play.api.{Configuration, Logger}
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.api.service.Auditor
 import uk.gov.hmrc.auth.core.AuthConnector
@@ -157,24 +157,8 @@ class SandboxOrchestrationService @Inject() (genericConnector: GenericConnector,
 
   val cache: scala.collection.mutable.Map[String, String] = scala.collection.mutable.Map()
 
-  val defaultUser = "404893573708"
-  val defaultNino = "CS700100A"
-  private val ninoMapping = Map(defaultUser -> defaultNino,
-                                "404893573709" -> "CS700101A",
-                                "404893573710" -> "CS700102A",
-                                "404893573711" -> "CS700103A",
-                                "404893573712" -> "CS700104A",
-                                "404893573713" -> "CS700105A",
-                                "404893573714" -> "CS700106A",
-                                "404893573715" -> "CS700107A",
-                                "404893573716" -> "CS700108A",
-                                "404893573717" -> "CS700109A")
-
   override def preFlightCheck(preflightRequest:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
-    successful(hc.extraHeaders.find(_._1 equals "X-MOBILE-USER-ID") match {
-      case  Some((_, value))  => buildPreFlightResponse(value)
-      case _ => buildPreFlightResponse(defaultUser)
-    })
+    successful(buildPreFlightResponse)
   }
 
   override def startup(jsValue:JsValue, nino: uk.gov.hmrc.domain.Nino, journeyId: Option[String]) (implicit hc: HeaderCarrier): Future[JsObject] = {
@@ -209,9 +193,9 @@ class SandboxOrchestrationService @Inject() (genericConnector: GenericConnector,
     response
   }
 
-  private def buildPreFlightResponse(userId: String) : PreFlightCheckResponse = {
-    val nino = Nino(ninoMapping.getOrElse(userId, defaultNino))
-    PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(nino), None, routeToIV = false, routeToTwoFactor = false, UUID.randomUUID().toString, "credId-1234", "Individual"))
+  private def buildPreFlightResponse() : PreFlightCheckResponse = {
+    PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(Nino("CS700100A")), None, routeToIV = false,
+      routeToTwoFactor = false, randomUUID().toString, "credId-1234", "Individual"))
   }
 
 }

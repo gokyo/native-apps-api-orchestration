@@ -55,7 +55,7 @@ class RouterHttpRequestHandlerSpec extends UnitSpec with WithFakeApplication wit
     "route to standard controller when no X-MOBILE-USER-ID header is supplied" in {
 
       val application = new GuiceApplicationBuilder()
-        .configure("router.regex" → "404893573708")
+        .configure("router.regex" → "208606423740")
         .configure("router.prefix" → "/sandbox")
         .configure("router.header" → "X-MOBILE-USER-ID")
         .build()
@@ -87,7 +87,7 @@ class RouterHttpRequestHandlerSpec extends UnitSpec with WithFakeApplication wit
     "route to standard controller when the X-MOBILE-USER-ID header partly matches the configured regex" in {
 
       val application = new GuiceApplicationBuilder()
-        .configure("router.regex" → "404893573708/929292929")
+        .configure("router.regex" → "208606423740/929292929")
         .configure("router.prefix" → "/sandbox")
         .configure("router.header" → "X-MOBILE-USER-ID")
         .build()
@@ -103,14 +103,14 @@ class RouterHttpRequestHandlerSpec extends UnitSpec with WithFakeApplication wit
     "route to the sandbox controller when a valid X-MOBILE-USER-ID header is supplied" in {
 
       val application = new GuiceApplicationBuilder()
-        .configure("router.regex" → "404893573708")
+        .configure("router.regex" → "208606423740")
         .configure("router.prefix" → "/sandbox")
         .configure("router.header" → "X-MOBILE-USER-ID")
         .build()
 
       val routingHttpRequestHandler = application.injector.instanceOf[RoutingHttpRequestHandler]
 
-      val requestHeader = new FakeRequestHeader(new Headers(Seq(("X-MOBILE-USER-ID", "404893573708"),(HOST,"localhost:8236"), (ACCEPT, "application/vnd.hmrc.1.0+json"), (CONTENT_TYPE, ContentTypes.JSON))), "POST")
+      val requestHeader = new FakeRequestHeader(new Headers(Seq(("X-MOBILE-USER-ID", "208606423740"),(HOST,"localhost:8236"), (ACCEPT, "application/vnd.hmrc.1.0+json"), (CONTENT_TYPE, ContentTypes.JSON))), "POST")
       val overriddenRequest = routingHttpRequestHandler.overrideRouting(requestHeader)
       overriddenRequest.path shouldBe "/sandbox/context/some-path"
 

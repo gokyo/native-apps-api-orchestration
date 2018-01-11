@@ -13,7 +13,7 @@ class SandboxOrchestrationControllerISpec extends BaseISpec {
   private val headerThatSucceeds = Seq(HeaderNames.CONTENT_TYPE  → MimeTypes.JSON,
                                        HeaderNames.ACCEPT        → "application/vnd.hmrc.1.0+json",
                                        HeaderNames.AUTHORIZATION → "Bearer 11111111",
-                                      "X-MOBILE-USER-ID" → "404893573708")
+                                      "X-MOBILE-USER-ID" → "208606423740")
 
   private val journeyId = "f7a5d556-9f34-47cb-9d84-7e904f2fe704"
 

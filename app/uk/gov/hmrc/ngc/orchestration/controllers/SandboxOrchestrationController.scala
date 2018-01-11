@@ -46,7 +46,6 @@ trait SandboxOrchestrationController extends NativeAppsOrchestrationController w
     implicit request =>
       errorWrapper {
         implicit val hc = HeaderCarrierConverter.fromHeadersAndSession(request.headers, None)
-          .withExtraHeaders("X-MOBILE-USER-ID" -> request.headers.get("X-MOBILE-USER-ID").getOrElse("404893573708"))
         implicit val context: ExecutionContext = MdcLoggingExecutionContext.fromLoggingDetails
 
         Json.toJson(request.body).asOpt[PreFlightRequest].

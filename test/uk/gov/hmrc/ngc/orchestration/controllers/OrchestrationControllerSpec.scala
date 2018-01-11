@@ -18,7 +18,6 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import javax.inject.Provider
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
@@ -205,7 +204,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val versionBody: JsValue = Json.parse("""{"os":"android", "version":"1.0.1"}""")
       val versionRequestWithAuth: FakeRequest[JsValue] = FakeRequest().withBody(versionBody).withSession(
           "AuthToken" -> "Some Header"
-        ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
+        ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "208606423740")
       val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector, executorFactory)
       val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
       val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithAuth))
@@ -217,7 +216,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     "return startup response from a static resource" in new mocks {
       val requestWithAuth: FakeRequest[AnyContentAsJson] = FakeRequest().withJsonBody(Json.obj()).withSession(
         "AuthToken" -> "Some Header"
-      ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
+      ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "208606423740")
       val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector, executorFactory)
       val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
       val result: mvc.Result = await(controller.orchestrate(Nino(nino),Some(journeyId))(requestWithAuth))(Duration(10, TimeUnit.SECONDS))
@@ -229,7 +228,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val currentTime: DateTime = new LocalDate().toDateTimeAtStartOfDay
       val requestWithAuth: FakeRequest[AnyContentAsJson] = FakeRequest().withJsonBody(Json.obj()).withSession(
         "AuthToken" -> "Some Header"
-      ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "404893573708")
+      ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "208606423740")
       val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector, executorFactory)
       val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
       val result: mvc.Result = await(controller.poll(Nino(nino))(requestWithAuth))
