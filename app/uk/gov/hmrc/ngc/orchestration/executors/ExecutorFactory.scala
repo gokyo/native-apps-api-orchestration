@@ -282,7 +282,7 @@ class WidgetSurveyDataServiceExecutor(genericConnector: GenericConnector, config
 
   override def connector = genericConnector
 
-  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = s"/native-app-widget/${nino}/widget-data"
+  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = s"/native-app-widget/widget-data"
 
   override val configuration = config
 }
