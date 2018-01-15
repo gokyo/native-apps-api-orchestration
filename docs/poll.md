@@ -36,6 +36,7 @@ On success the below JSON will be returned. Please see notes below detailing the
   "helpToSave": {
     "enabled": true,
     "infoUrl": "https://www.gov.uk/government/publications/help-to-save-what-it-is-and-who-its-for/the-help-to-save-scheme"
+    // ... plus more fields - see https://github.com/hmrc/mobile-help-to-save/ for full contents
   },
   "taxSummary": {
     // see https://github.com/hmrc/personal-income/blob/master/docs/tax-summary.md
