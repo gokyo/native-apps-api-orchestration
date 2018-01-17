@@ -31,7 +31,7 @@ import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.domain.Nino
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.msasync.repository.{AsyncMongoRepository, AsyncRepository}
-import uk.gov.hmrc.ngc.orchestration.services.{Result ⇒ _, _}
+import uk.gov.hmrc.ngc.orchestration.services.{Result => _, _}
 import uk.gov.hmrc.play.HeaderCarrierConverter
 import uk.gov.hmrc.play.asyncmvc.model.AsyncMvcSession
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
@@ -191,7 +191,8 @@ class LiveOrchestrationController  @Inject()(
   @Named("supported.generic.service.max") override val serviceMax: Int,
   @Named("supported.generic.event.max") override val eventMax: Int,
   @Named("controllers.confidenceLevel") override val confLevel: Int,
-  @Named("poll.success.maxAge") override val maxAgeForSuccess: Int) extends NativeAppsOrchestrationController {
+  @Named("poll.success.maxAge") override val maxAgeForSuccess: Int,
+  @Named("routeToTwoFactorAlwaysFalse") override val routeToTwoFactorAlwaysFalse: Boolean ) extends NativeAppsOrchestrationController {
 
   override val app: String = "Live-Orchestration-Controller"
   override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.get().mongoConnector.db)

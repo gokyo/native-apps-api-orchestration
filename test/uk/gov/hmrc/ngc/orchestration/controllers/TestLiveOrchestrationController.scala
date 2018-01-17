@@ -36,8 +36,8 @@ class TestProvider[T](obj: T) extends Provider[T] {
   override def get(): T = obj
 }
 
-class TestLiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, reactiveMongo: ReactiveMongoComponent, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String) extends
-  LiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, new TestProvider[ReactiveMongoComponent](reactiveMongo), serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int) {
+class TestLiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem: ActorSystem, lifecycle: ApplicationLifecycle, reactiveMongo: ReactiveMongoComponent, serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, override val actorName: String, routeToTwoFactorAlwaysFalse: Boolean) extends
+  LiveOrchestrationController(appNameConfiguration: Configuration, auditConnector: AuditConnector, authConnector: AuthConnector, service: LiveOrchestrationService, actorSystem, lifecycle, new TestProvider[ReactiveMongoComponent](reactiveMongo), serviceMax: Int, eventMax:Int, confLevel: Int , maxAgeForSuccess: Int, routeToTwoFactorAlwaysFalse: Boolean ) {
 
   override lazy val repository = new AsyncRepository {
 

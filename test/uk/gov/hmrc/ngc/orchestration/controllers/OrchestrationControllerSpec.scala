@@ -119,7 +119,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val versionBody: JsValue = Json.parse("""{"os":"android", "version":"1.0.1"}""")
       val versionRequest: FakeRequest[JsValue] = FakeRequest().withBody(versionBody).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json")
 
-      val controller = new TestLiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "PreflightHappyPath")
+      val controller = new TestLiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "PreflightHappyPath", false)
       val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequest.withHeaders("Authorization" -> "Bearer 123456789")))(Duration(10,TimeUnit.SECONDS))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe Json.toJson(expectation)
@@ -139,6 +139,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
         override val confLevel: Int = 200
         override val repository: AsyncRepository = mock[AsyncRepository]
         override val app: String = "test"
+        override val routeToTwoFactorAlwaysFalse: Boolean = false
         override def authConnector: AuthConnector = mock[AuthConnector]
         override def throttleLimit = 0
         override protected lazy val actorSystem = OrchestrationControllerSpec.this.actorSystem
@@ -153,7 +154,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
 
     "return unauthorized when authority record does not contain a NINO" in new mocks {
       stubAuthorisationGrantAccess(Some("") and ConfidenceLevel.L50)
-      val controller = new TestLiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "UnauthorisedNoNino")
+      val controller = new TestLiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "UnauthorisedNoNino", false)
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
       jsonBodyOf(response) shouldBe TestData.pollResponse
@@ -172,7 +173,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
 
     "return 401 result with json status detailing low CL on authority" in new mocks {
       stubAuthorisationGrantAccess(Some(nino) and ConfidenceLevel.L50)
-      val controller = new TestLiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "TestingLowCL")
+      val controller = new TestLiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, liveOrchestrationService, actorSystem, lifecycle, reactiveMongo, 10, 10, 200, 30000, "TestingLowCL", false)
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithHeader))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 200
       jsonBodyOf(response) shouldBe TestData.pollResponse
@@ -190,7 +191,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
     }
 
     "return status code 406 when the headers are invalid" in new mocks {
-      val controller = new LiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, new TestProvider[ReactiveMongoComponent](reactiveMongo), 10, 10, 200, 30000)
+      val controller = new LiveOrchestrationController(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, mockLiveOrchestrationService, actorSystem, lifecycle, new TestProvider[ReactiveMongoComponent](reactiveMongo), 10, 10, 200, 30000, false)
       val response: mvc.Result = await(controller.orchestrate(Nino(nino), Some(journeyId))(startupRequestWithoutHeaders))(Duration(10, TimeUnit.SECONDS))
       status(response) shouldBe 406
       Json.stringify(jsonBodyOf(response)) shouldBe """{"code":"ACCEPT_HEADER_INVALID","message":"The accept header is missing or invalid"}"""
@@ -206,7 +207,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
           "AuthToken" -> "Some Header"
         ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "208606423740")
       val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector, executorFactory)
-      val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
+      val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200, false)
       val result: mvc.Result = await(controller.preFlightCheck(Some(journeyId))(versionRequestWithAuth))
       status(result) shouldBe 200
       val journeyIdRetrieve: String = (contentAsJson(result) \ "accounts" \ "journeyId").as[String]
@@ -218,7 +219,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
         "AuthToken" -> "Some Header"
       ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "208606423740")
       val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector, executorFactory)
-      val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
+      val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200, false)
       val result: mvc.Result = await(controller.orchestrate(Nino(nino),Some(journeyId))(requestWithAuth))(Duration(10, TimeUnit.SECONDS))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe TestData.sandboxStartupResponse
@@ -230,7 +231,7 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
         "AuthToken" -> "Some Header"
       ).withHeaders(CONTENT_TYPE -> JSON, ACCEPT -> "application/vnd.hmrc.1.0+json", AUTHORIZATION -> "Bearer 123456789", "X-MOBILE-USER-ID" → "208606423740")
       val sandboxOrchestrationService = new SandboxOrchestrationService(mockGenericConnector, executorFactory)
-      val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200)
+      val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200, false)
       val result: mvc.Result = await(controller.poll(Nino(nino))(requestWithAuth))
       status(result) shouldBe 200
       contentAsJson(result) shouldBe Json.parse(TestData.sandboxPollResponse

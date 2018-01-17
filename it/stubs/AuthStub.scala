@@ -24,6 +24,11 @@ object AuthStub {
     authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "strong")
   }
 
+  def authorisedWithNinoOnlyReturningWeakCrednetialStrength(nino: String): Unit = {
+    authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "weak")
+    authoriseWithNinoOnlyMatchingNino(nino)
+  }
+
   def authorisedWithWeakCredentials(nino: String): Unit = {
     authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "weak")
     authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "weak")
@@ -105,6 +110,48 @@ object AuthStub {
             |    },
             |    {
             |      "credentialStrength": "$predicateCredentialStrength"
+            |    }
+            |  ],
+            |  "retrieve": [
+            |    "nino",
+            |    "confidenceLevel"
+            |  ]
+            |}
+          """.stripMargin,
+          true,
+          false))
+      .willReturn(aResponse()
+        .withStatus(200)
+        .withBody(
+          s"""
+             |{
+             |  "nino": "$nino",
+             |  "userDetailsUri": "/test-user-details",
+             |  "confidenceLevel": 200
+             |}
+          """.stripMargin)))
+  }
+
+  private def authoriseWithNinoOnlyMatchingNino(nino: String): Unit = {
+    // catch-all case for when /auth/authorised is called with a non-matching NINO
+    authorisedWithNinoPredicateWillReturn401(1)
+
+    // specific case for when /auth/authorise is called with a matching NINO
+    stubFor(post(urlEqualTo("/auth/authorise"))
+        .atPriority(0)
+        .withRequestBody(equalToJson(
+          s"""
+            |{
+            |  "authorise": [
+            |    {
+            |      "enrolment": "HMRC-NI",
+            |      "identifiers": [
+            |        {
+            |          "key": "NINO",
+            |          "value": "$nino"
+            |        }
+            |      ],
+            |      "state": "Activated"
             |    }
             |  ],
             |  "retrieve": [

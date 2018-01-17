@@ -18,7 +18,9 @@ package uk.gov.hmrc.ngc.orchestration.services
 
 import java.util.UUID
 
+import uk.gov.hmrc.auth.core.CredentialStrength.strong
 import uk.gov.hmrc.auth.core._
+import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.retrieve.~
 import uk.gov.hmrc.domain.{Nino, SaUtr}
@@ -39,6 +41,8 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
 
   self: Confidence ⇒
 
+  val routeToTwoFactorAlwaysFalse: Boolean
+
   def getAccounts(journeyId: Option[String])(implicit hc: HeaderCarrier) = {
     authorised()
       .retrieve(nino and saUtr and affinityGroup and credentials and credentialStrength and confidenceLevel) {
@@ -57,7 +61,14 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
     lazy val failedToMatchNino = new FailToMatchTaxIdOnAuth
     lazy val lowConfidenceLevel = new AccountWithLowCL
 
-    authorised(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", requestedNino.value)), "Activated", None) and CredentialStrength(CredentialStrength.strong))
+    val predicate: Predicate = {
+      val enrolment = Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", requestedNino.value)), "Activated", None)
+
+      if (routeToTwoFactorAlwaysFalse) enrolment
+      else enrolment and CredentialStrength(strong)
+    }
+
+    authorised(predicate)
       .retrieve(nino and confidenceLevel) {
         case Some(nino) ~ confidenceLevel ⇒ {
           if (nino.isEmpty) throw ninoNotFoundOnAccount
@@ -72,7 +83,11 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
   }
 
   private def twoFactorRequired(credentialStrength: Option[String]) = {
-    !credentialStrength.contains(CredentialStrength.strong)
+    if (routeToTwoFactorAlwaysFalse) {
+      false
+    } else {
+      !credentialStrength.contains(strong)
+    }
   }
 
 
