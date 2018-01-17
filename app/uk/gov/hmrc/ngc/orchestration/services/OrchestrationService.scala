@@ -70,7 +70,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
                                          val auditConnector: AuditConnector,
                                          val authConnector: AuthConnector,
                                          @Named("controllers.confidenceLevel") val confLevel: Int,
-                                         @Named("routeToTwoFactorAlwaysFalse") val routeToTwoFactorAlwaysFalse: Boolean)
+                                         @Named("routeToTwoFactorAlwaysFalse") override val routeToTwoFactorAlwaysFalse: Boolean)
   extends OrchestrationService with Authorisation with Auditor with ConfiguredCampaigns {
 
   override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
