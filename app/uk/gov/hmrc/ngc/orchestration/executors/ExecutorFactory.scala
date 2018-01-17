@@ -97,6 +97,7 @@ class ExecutorFactory @Inject()(genericConnector: GenericConnector, auditConnect
   val pushNotificationGetMessageExecutor = new PushNotificationGetMessageExecutor(genericConnector, configuration)
   val pushNotificationRespondToMessageExecutor = new PushNotificationRespondToMessageExecutor(genericConnector, configuration)
   val nativeAppSurveyWidget = new WidgetSurveyDataServiceExecutor(genericConnector, configuration)
+  val helpToSaveStartup = new HelpToSaveStartupExecutor(genericConnector, configuration)
   val claimantDetailsServiceExecutor = new ClaimantDetailsServiceExecutor(genericConnector, configuration)
 
   val auditEventExecutor = new AuditEventExecutor(audit = new Audit("native-apps", auditConnector))
@@ -108,6 +109,7 @@ class ExecutorFactory @Inject()(genericConnector: GenericConnector, auditConnect
       pushNotificationGetMessageExecutor,
       pushNotificationRespondToMessageExecutor,
       nativeAppSurveyWidget,
+      helpToSaveStartup,
       claimantDetailsServiceExecutor
     ).map(executor => executor.executorName -> executor): _*
   )
@@ -213,6 +215,20 @@ class PushNotificationRespondToMessageExecutor(genericConnector: GenericConnecto
 
   override def connector = genericConnector
   override val configuration = config
+}
+
+class HelpToSaveStartupExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
+  override val executorName: String = "help-to-save-startup"
+
+  override val executionType: String = GET
+  override val serviceName: String = "mobile-help-to-save"
+
+  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = "/mobile-help-to-save/startup"
+
+  override val cacheTime: Option[Long] = None
+
+  override def connector: GenericConnector = genericConnector
+  override val configuration: Configuration = config
 }
 
 case class AuditEventExecutor(audit: Audit, logger: LoggerLike = Logger) extends EventExecutor {

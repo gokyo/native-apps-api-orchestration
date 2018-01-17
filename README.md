@@ -29,6 +29,8 @@ API
 | Respond To  Message ```/native-app/:nino/poll``` | GET | Poll the status of the async respond to message task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/push-notification-respond-to-message-poll.md) |
 | Survey Widget ```/native-app/:nino/startup?journeyId={id}``` | POST | Persists widget survey data captured in the app. [More...](docs/survey-widget.md) |
 | Survey Widget ```/native-app/:nino/poll``` | GET | Poll the status of the async survey widget task which was initiated from startup. The cookie named mdtpapi must be supplied to this service. [More...](docs/survey-widget-poll.md) |
+| Help to Save Startup ```/native-app/:nino/startup?journeyId={id}``` | POST | Initiate an async help-to-save-startup task to retrieve Help to Save portion of [startup](docs/poll.md) [More...](docs/help-to-save-startup.md) |
+| Help to Save Startup ```/native-app/:nino/poll``` | GET | Poll the status of an async help-to-save-startup task which was initiated from startup. [More...](docs/help-to-save-startup-poll.md) |
 | Audit ```/native-app/:nino/startup?journeyId={id}``` | POST | Retrieve message associated with Id and update state to answer. [More...](docs/audit-event.md) |
 | Audit ```/native-app/:nino/startup?journeyId={id}``` | GET | Returns all messages that have not yet been answered or acknowledged. [More...](docs/audit-event-poll.md) |
 
