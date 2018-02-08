@@ -53,13 +53,13 @@ object TestData {
       |                  "employmentStatus": 1,
       |                  "tax": {
       |                    "totalIncome": 18900,
-      |                    "totalTaxableIncome": 7900,
-      |                    "totalTax": 1580,
+      |                    "totalTaxableIncome": 18900,
+      |                    "totalTax": 1480,
       |                    "potentialUnderpayment": 0,
       |                    "taxBands": [
       |                      {
-      |                        "income": 7900,
-      |                        "tax": 1580,
+      |                        "income": 7400,
+      |                        "tax": 1480,
       |                        "lowerBand": 0,
       |                        "upperBand": 32000,
       |                        "rate": 20
@@ -84,7 +84,7 @@ object TestData {
       |                  "worksNumber": "1",
       |                  "jobTitle": " ",
       |                  "startDate": "2008-04-06",
-      |                  "income": 7900,
+      |                  "income": 18900,
       |                  "otherIncomeSourceIndicator": false,
       |                  "isEditable": true,
       |                  "isLive": true,
@@ -93,13 +93,13 @@ object TestData {
       |                }
       |              ],
       |              "totalIncome": 18900,
-      |              "totalTax": 1580,
-      |              "totalTaxableIncome": 7900
+      |              "totalTax": 1480,
+      |              "totalTaxableIncome": 18900
       |            },
       |            "hasDuplicateEmploymentNames": false,
       |            "totalIncome": 18900,
-      |            "totalTaxableIncome": 7900,
-      |            "totalTax": 1580
+      |            "totalTaxableIncome": 18900,
+      |            "totalTax": 1480
       |          },
       |          "noneTaxCodeIncomes": {
       |            "totalIncome": 0
@@ -117,12 +117,12 @@ object TestData {
       |      "totalLiability": {
       |        "nonSavings": {
       |          "totalIncome": 18900,
-      |          "totalTaxableIncome": 7900,
-      |          "totalTax": 1580,
+      |          "totalTaxableIncome": 18900,
+      |          "totalTax": 1480,
       |          "taxBands": [
       |            {
-      |              "income": 7900,
-      |              "tax": 1580,
+      |              "income": 7400,
+      |              "tax": 1480,
       |              "lowerBand": 0,
       |              "upperBand": 32000,
       |              "rate": 20
@@ -146,8 +146,8 @@ object TestData {
       |        },
       |        "mergedIncomes": {
       |          "totalIncome": 18900,
-      |          "totalTaxableIncome": 7900,
-      |          "totalTax": 1580,
+      |          "totalTaxableIncome": 18900,
+      |          "totalTax": 1480,
       |          "taxBands": [
       |            {
       |              "income": 93,
@@ -164,8 +164,8 @@ object TestData {
       |              "rate": 7.5
       |            },
       |            {
-      |              "income": 7900,
-      |              "tax": 1580,
+      |              "income": 7400,
+      |              "tax": 1480,
       |              "lowerBand": 0,
       |              "upperBand": 32000,
       |              "rate": 20
@@ -201,9 +201,9 @@ object TestData {
       |          ],
       |          "allowReliefDeducts": 11500
       |        },
-      |        "totalLiability": 7900,
-      |        "totalTax": 1580,
-      |        "totalTaxOnIncome": 1580,
+      |        "totalLiability": 18900,
+      |        "totalTax": 1480,
+      |        "totalTaxOnIncome": 1480,
       |        "underpaymentPreviousYear": 0,
       |        "outstandingDebt": 0,
       |        "childBenefitAmount": 0,
@@ -290,8 +290,8 @@ object TestData {
       |      }
       |    },
       |    "baseViewModel": {
-      |      "estimatedIncomeTax": 1580,
-      |      "taxableIncome": 7900,
+      |      "estimatedIncomeTax": 1480,
+      |      "taxableIncome": 18900,
       |      "taxFree": 11500,
       |      "personalAllowance": 11500,
       |      "hasTamc": false,
@@ -303,7 +303,7 @@ object TestData {
       |    "estimatedIncomeWrapper": {
       |      "estimatedIncome": {
       |        "increasesTax": true,
-      |        "incomeTaxEstimate": 1580,
+      |        "incomeTaxEstimate": 1480,
       |        "incomeEstimate": 18900,
       |        "taxFreeEstimate": 11500,
       |        "taxRelief": false,
@@ -324,31 +324,31 @@ object TestData {
       |          "bands": [
       |            {
       |              "colour": "TaxFree",
-      |              "barPercentage": 58.21,
+      |              "barPercentage": 60.85,
       |              "tablePercentage": "0",
       |              "income": 11500,
       |              "tax": 0
       |            },
       |            {
       |              "colour": "Band1",
-      |              "barPercentage": 41.79,
+      |              "barPercentage": 39.15,
       |              "tablePercentage": "20",
-      |              "income": 7900,
-      |              "tax": 1580
+      |              "income": 18900,
+      |              "tax": 1480
       |            }
       |          ],
       |          "minBand": 0,
       |          "nextBand": 18900,
       |          "incomeTotal": 18900,
       |          "incomeAsPercentage": 100,
-      |          "taxTotal": 1580
+      |          "taxTotal": 1480
       |        },
       |        "hasChanges": false
       |      }
       |    },
       |    "taxableIncome": {
       |      "taxFreeAmount": 11500,
-      |      "incomeTax": 1580,
+      |      "incomeTax": 1480,
       |      "income": 18900,
       |      "taxCodeList": [
       |        "1150L"
@@ -368,13 +368,13 @@ object TestData {
       |                  "employmentStatus": 1,
       |                  "tax": {
       |                    "totalIncome": 18900,
-      |                    "totalTaxableIncome": 7900,
-      |                    "totalTax": 1580,
+      |                    "totalTaxableIncome": 18900,
+      |                    "totalTax": 1480,
       |                    "potentialUnderpayment": 0,
       |                    "taxBands": [
       |                      {
-      |                        "income": 7900,
-      |                        "tax": 1580,
+      |                        "income": 7400,
+      |                        "tax": 1480,
       |                        "lowerBand": 0,
       |                        "upperBand": 32000,
       |                        "rate": 20
@@ -399,7 +399,7 @@ object TestData {
       |                  "worksNumber": "1",
       |                  "jobTitle": " ",
       |                  "startDate": "2008-04-06",
-      |                  "income": 7900,
+      |                  "income": 18900,
       |                  "otherIncomeSourceIndicator": false,
       |                  "isEditable": true,
       |                  "isLive": true,
@@ -408,13 +408,13 @@ object TestData {
       |                }
       |              ],
       |              "totalIncome": 18900,
-      |              "totalTax": 1580,
-      |              "totalTaxableIncome": 7900
+      |              "totalTax": 1480,
+      |              "totalTaxableIncome": 18900
       |            },
       |            "hasDuplicateEmploymentNames": false,
       |            "totalIncome": 18900,
-      |            "totalTaxableIncome": 7900,
-      |            "totalTax": 1580
+      |            "totalTaxableIncome": 18900,
+      |            "totalTax": 1480
       |          },
       |          "noneTaxCodeIncomes": {
       |            "totalIncome": 0
@@ -437,13 +437,13 @@ object TestData {
       |                "employmentStatus": 1,
       |                "tax": {
       |                  "totalIncome": 18900,
-      |                  "totalTaxableIncome": 7900,
-      |                  "totalTax": 1580,
+      |                  "totalTaxableIncome": 18900,
+      |                  "totalTax": 1480,
       |                  "potentialUnderpayment": 0,
       |                  "taxBands": [
       |                    {
-      |                      "income": 7900,
-      |                      "tax": 1580,
+      |                      "income": 7400,
+      |                      "tax": 1480,
       |                      "lowerBand": 0,
       |                      "upperBand": 32000,
       |                      "rate": 20
@@ -477,13 +477,13 @@ object TestData {
       |              }
       |            ],
       |            "totalIncome": 18900,
-      |            "totalTax": 1580,
-      |            "totalTaxableIncome": 7900
+      |            "totalTax": 1480,
+      |            "totalTaxableIncome": 18900
       |          },
       |          "hasDuplicateEmploymentNames": false,
       |          "totalIncome": 18900,
-      |          "totalTaxableIncome": 7900,
-      |          "totalTax": 1580
+      |          "totalTaxableIncome": 18900,
+      |          "totalTax": 1480
       |        },
       |        "totalEmploymentPensionAmt": 18900,
       |        "hasEmployment": true,
@@ -626,13 +626,13 @@ object TestData {
       |                  "employmentStatus": 1,
       |                  "tax": {
       |                    "totalIncome": 18900,
-      |                    "totalTaxableIncome": 7900,
-      |                    "totalTax": 1580,
+      |                    "totalTaxableIncome": 18900,
+      |                    "totalTax": 1480,
       |                    "potentialUnderpayment": 0,
       |                    "taxBands": [
       |                      {
-      |                        "income": 7900,
-      |                        "tax": 1580,
+      |                        "income": 7400,
+      |                        "tax": 1480,
       |                        "lowerBand": 0,
       |                        "upperBand": 32000,
       |                        "rate": 20
@@ -657,7 +657,7 @@ object TestData {
       |                  "worksNumber": "1",
       |                  "jobTitle": " ",
       |                  "startDate": "2008-04-06",
-      |                  "income": 7900,
+      |                  "income": 18900,
       |                  "otherIncomeSourceIndicator": false,
       |                  "isEditable": true,
       |                  "isLive": true,
@@ -666,13 +666,13 @@ object TestData {
       |                }
       |              ],
       |              "totalIncome": 18900,
-      |              "totalTax": 1580,
-      |              "totalTaxableIncome": 7900
+      |              "totalTax": 1480,
+      |              "totalTaxableIncome": 18900
       |            },
       |            "hasDuplicateEmploymentNames": false,
       |            "totalIncome": 18900,
-      |            "totalTaxableIncome": 7900,
-      |            "totalTax": 1580
+      |            "totalTaxableIncome": 18900,
+      |            "totalTax": 1480
       |          },
       |          "noneTaxCodeIncomes": {
       |            "totalIncome": 0
@@ -690,12 +690,12 @@ object TestData {
       |      "totalLiability": {
       |        "nonSavings": {
       |          "totalIncome": 18900,
-      |          "totalTaxableIncome": 7900,
-      |          "totalTax": 1580,
+      |          "totalTaxableIncome": 18900,
+      |          "totalTax": 1480,
       |          "taxBands": [
       |            {
-      |              "income": 7900,
-      |              "tax": 1580,
+      |              "income": 7400,
+      |              "tax": 1480,
       |              "lowerBand": 0,
       |              "upperBand": 32000,
       |              "rate": 20
@@ -719,8 +719,8 @@ object TestData {
       |        },
       |        "mergedIncomes": {
       |          "totalIncome": 18900,
-      |          "totalTaxableIncome": 7900,
-      |          "totalTax": 1580,
+      |          "totalTaxableIncome": 18900,
+      |          "totalTax": 1480,
       |          "taxBands": [
       |            {
       |              "income": 93,
@@ -737,8 +737,8 @@ object TestData {
       |              "rate": 7.5
       |            },
       |            {
-      |              "income": 7900,
-      |              "tax": 1580,
+      |              "income": 7400,
+      |              "tax": 1480,
       |              "lowerBand": 0,
       |              "upperBand": 32000,
       |              "rate": 20
@@ -774,9 +774,9 @@ object TestData {
       |          ],
       |          "allowReliefDeducts": 11500
       |        },
-      |        "totalLiability": 7900,
-      |        "totalTax": 1580,
-      |        "totalTaxOnIncome": 1580,
+      |        "totalLiability": 18900,
+      |        "totalTax": 1480,
+      |        "totalTaxOnIncome": 1480,
       |        "underpaymentPreviousYear": 0,
       |        "outstandingDebt": 0,
       |        "childBenefitAmount": 0,
@@ -863,8 +863,8 @@ object TestData {
       |      }
       |    },
       |    "baseViewModel": {
-      |      "estimatedIncomeTax": 1580,
-      |      "taxableIncome": 7900,
+      |      "estimatedIncomeTax": 1480,
+      |      "taxableIncome": 18900,
       |      "taxFree": 11500,
       |      "personalAllowance": 11500,
       |      "hasTamc": false,
@@ -876,7 +876,7 @@ object TestData {
       |    "estimatedIncomeWrapper": {
       |      "estimatedIncome": {
       |        "increasesTax": true,
-      |        "incomeTaxEstimate": 1580,
+      |        "incomeTaxEstimate": 1480,
       |        "incomeEstimate": 18900,
       |        "taxFreeEstimate": 11500,
       |        "taxRelief": false,
@@ -897,31 +897,31 @@ object TestData {
       |          "bands": [
       |            {
       |              "colour": "TaxFree",
-      |              "barPercentage": 58.21,
+      |              "barPercentage": 60.85,
       |              "tablePercentage": "0",
       |              "income": 11500,
       |              "tax": 0
       |            },
       |            {
       |              "colour": "Band1",
-      |              "barPercentage": 41.79,
+      |              "barPercentage": 39.15,
       |              "tablePercentage": "20",
-      |              "income": 7900,
-      |              "tax": 1580
+      |              "income": 7400,
+      |              "tax": 1480
       |            }
       |          ],
       |          "minBand": 0,
       |          "nextBand": 18900,
       |          "incomeTotal": 18900,
       |          "incomeAsPercentage": 100,
-      |          "taxTotal": 1580
+      |          "taxTotal": 1480
       |        },
       |        "hasChanges": false
       |      }
       |    },
       |    "taxableIncome": {
       |      "taxFreeAmount": 11500,
-      |      "incomeTax": 1580,
+      |      "incomeTax": 1480,
       |      "income": 18900,
       |      "taxCodeList": [
       |        "1150L"
@@ -941,13 +941,13 @@ object TestData {
       |                  "employmentStatus": 1,
       |                  "tax": {
       |                    "totalIncome": 18900,
-      |                    "totalTaxableIncome": 7900,
-      |                    "totalTax": 1580,
+      |                    "totalTaxableIncome": 18900,
+      |                    "totalTax": 1480,
       |                    "potentialUnderpayment": 0,
       |                    "taxBands": [
       |                      {
-      |                        "income": 7900,
-      |                        "tax": 1580,
+      |                        "income": 7400,
+      |                        "tax": 1480,
       |                        "lowerBand": 0,
       |                        "upperBand": 32000,
       |                        "rate": 20
@@ -972,7 +972,7 @@ object TestData {
       |                  "worksNumber": "1",
       |                  "jobTitle": " ",
       |                  "startDate": "2008-04-06",
-      |                  "income": 7900,
+      |                  "income": 18900,
       |                  "otherIncomeSourceIndicator": false,
       |                  "isEditable": true,
       |                  "isLive": true,
@@ -981,13 +981,13 @@ object TestData {
       |                }
       |              ],
       |              "totalIncome": 18900,
-      |              "totalTax": 1580,
-      |              "totalTaxableIncome": 7900
+      |              "totalTax": 1480,
+      |              "totalTaxableIncome": 18900
       |            },
       |            "hasDuplicateEmploymentNames": false,
       |            "totalIncome": 18900,
-      |            "totalTaxableIncome": 7900,
-      |            "totalTax": 1580
+      |            "totalTaxableIncome": 18900,
+      |            "totalTax": 1480
       |          },
       |          "noneTaxCodeIncomes": {
       |            "totalIncome": 0
@@ -1010,13 +1010,13 @@ object TestData {
       |                "employmentStatus": 1,
       |                "tax": {
       |                  "totalIncome": 18900,
-      |                  "totalTaxableIncome": 7900,
-      |                  "totalTax": 1580,
+      |                  "totalTaxableIncome": 18900,
+      |                  "totalTax": 1480,
       |                  "potentialUnderpayment": 0,
       |                  "taxBands": [
       |                    {
-      |                      "income": 7900,
-      |                      "tax": 1580,
+      |                      "income": 7400,
+      |                      "tax": 1480,
       |                      "lowerBand": 0,
       |                      "upperBand": 32000,
       |                      "rate": 20
@@ -1050,13 +1050,13 @@ object TestData {
       |              }
       |            ],
       |            "totalIncome": 18900,
-      |            "totalTax": 1580,
-      |            "totalTaxableIncome": 7900
+      |            "totalTax": 1480,
+      |            "totalTaxableIncome": 18900
       |          },
       |          "hasDuplicateEmploymentNames": false,
       |          "totalIncome": 18900,
-      |          "totalTaxableIncome": 7900,
-      |          "totalTax": 1580
+      |          "totalTaxableIncome": 18900,
+      |          "totalTax": 1480
       |        },
       |        "totalEmploymentPensionAmt": 18900,
       |        "hasEmployment": true,
