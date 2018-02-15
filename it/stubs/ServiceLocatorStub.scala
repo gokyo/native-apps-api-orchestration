@@ -10,4 +10,10 @@ object ServiceLocatorStub {
         .withStatus(204)))
   }
 
+  def registrationWillFail(): Unit = {
+    stubFor(post(urlEqualTo("/registration"))
+      .willReturn(aResponse()
+        .withStatus(500)))
+  }
+
 }

@@ -16,15 +16,23 @@
 
 import akka.actor.ActorSystem
 import akka.stream.ActorMaterializer
-import com.github.tomakehurst.wiremock.client.WireMock._
+import com.google.inject.AbstractModule
 import org.scalatest.concurrent.PatienceConfiguration.Timeout
 import org.scalatest.concurrent.{Eventually, ScalaFutures}
 import org.scalatest.time.{Millis, Span}
+import play.api.Mode.{Dev, Mode}
 import play.api.inject.guice.GuiceApplicationBuilder
 import play.api.test.{FakeRequest, PlayRunners}
-import stubs.ServiceLocatorStub
+import play.api.{Configuration, Environment}
+import uk.gov.hmrc.api.config.ServiceLocatorConfig
+import uk.gov.hmrc.api.connector.ServiceLocatorConnector
 import uk.gov.hmrc.api.controllers.DocumentationController
+import uk.gov.hmrc.http.{CorePost, HeaderCarrier}
+import uk.gov.hmrc.ngc.orchestration.config.WSHttp
+import uk.gov.hmrc.play.bootstrap.config.AppName
 import utils.{BaseISpec, WiremockServiceLocatorSugar}
+
+import scala.concurrent.Future
 
 /**
  * Testcase to verify the capability of integration with the API platform.
@@ -40,6 +48,13 @@ import utils.{BaseISpec, WiremockServiceLocatorSugar}
  * See: ***REMOVED***
  */
 class PlatformIntegrationSpec extends BaseISpec with Eventually with WiremockServiceLocatorSugar with ScalaFutures with PlayRunners {
+  lazy val testApiServiceLocatorConnector = new TestApiServiceLocatorConnector(null, null, null)
+
+  private class TestGuiceModule extends AbstractModule {
+    override def configure(): Unit = {
+      bind(classOf[ServiceLocatorConnector]).toInstance(testApiServiceLocatorConnector)
+    }
+  }
 
   trait Setup {
     val documentationController = DocumentationController
@@ -54,18 +69,17 @@ class PlatformIntegrationSpec extends BaseISpec with Eventually with WiremockSer
     "appUrl" -> "http://microservice-name.service",
     "microservice.services.service-locator.host" -> wireMockHost,
     "microservice.services.service-locator.port" -> wireMockPort
-  )
+  ).overrides(new TestGuiceModule)
 
   "microservice" should {
-    "register itself to service-locator" in {
-      ServiceLocatorStub.registrationWillSucceed()
+    "register itself with the api platform automatically at start up" in {
+      val connector = app.injector.instanceOf[ServiceLocatorConnector].asInstanceOf[TestApiServiceLocatorConnector]
+      connector.regsisteredSuccessfully shouldBe false
+
       running(app) {
-        () ⇒
-          eventually(Timeout(Span(1000 * 2, Millis))) {
-            verify(1, postRequestedFor(urlMatching("/registration")).
-              withHeader("content-type", equalTo("application/json")).
-              withRequestBody(equalTo(regPayloadStringFor("application-name", "http://microservice-name.service"))))
-          }
+        eventually(Timeout(Span(1000 * 20, Millis))) {
+          connector.regsisteredSuccessfully shouldBe true
+        }
       }
     }
 
@@ -111,3 +125,24 @@ class PlatformIntegrationSpec extends BaseISpec with Eventually with WiremockSer
     }
   }
 }
+
+class TestApiServiceLocatorConnector(override val runModeConfiguration: Configuration, environment: Environment, wsHttp: WSHttp)
+  extends ServiceLocatorConnector with ServiceLocatorConfig with AppName {
+
+  var regsisteredSuccessfully: Boolean = false
+
+  override def register(implicit hc: HeaderCarrier): Future[Boolean] = {
+    regsisteredSuccessfully = true
+    Future successful true
+  }
+
+  override val appUrl: String = "test"
+  override val serviceUrl: String = "test"
+  override val handlerOK: () ⇒ Unit = () ⇒ ()
+  override val handlerError: Throwable ⇒ Unit = e ⇒ ()
+  override val metadata: Option[Map[String, String]] = None
+  override val http: CorePost = wsHttp
+  override def configuration: Configuration = runModeConfiguration
+  override protected def mode: Mode = Dev
+}
+
