@@ -24,6 +24,7 @@ import uk.gov.hmrc.api.connector.ServiceLocatorConnector
 import uk.gov.hmrc.api.controllers.DocumentationController
 import uk.gov.hmrc.auth.core.AuthConnector
 import uk.gov.hmrc.ngc.orchestration.controllers.{SandboxOrchestrationController, SandboxOrchestrationControllerImpl}
+import uk.gov.hmrc.ngc.orchestration.tasks.ServiceLocatorRegistrationTask
 import uk.gov.hmrc.play.config.ServicesConfig
 
 class GuiceModule(environment: Environment, configuration: Configuration) extends AbstractModule with ServicesConfig {
@@ -33,10 +34,11 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
 
   override def configure(): Unit = {
 
-    bind(classOf[ServiceLocatorConnector]).to(classOf[ApiServiceLocatorConnector]).asEagerSingleton()
+    bind(classOf[ServiceLocatorConnector]).to(classOf[ApiServiceLocatorConnector])
     bind(classOf[SandboxOrchestrationController]).to(classOf[SandboxOrchestrationControllerImpl])
     bind(classOf[AuthConnector]).to(classOf[MicroserviceAuthConnector])
     bind(classOf[DocumentationController]).toInstance(DocumentationController)
+    bind(classOf[ServiceLocatorRegistrationTask]).asEagerSingleton()
 
     bindConfigInt("supported.generic.service.max")
     bindConfigInt("supported.generic.event.max")
