@@ -60,18 +60,8 @@ case class TaxSummary(connector: GenericConnector, journeyId: Option[String]) ex
 case class TaxCreditsSubmissionState(connector: GenericConnector, journeyId: Option[String]) extends Executor {
   override val id = "state"
   override val serviceName = "personal-income"
-  override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
-    connector.doGet(serviceName, s"/income/tax-credits/submission/state/enabled${buildJourneyQueryParam(journeyId)}", hc).map(res =>
-      Some(Result(id,
-        JsObject(Seq("enableRenewals" -> JsBoolean(res.\("submissionState").as[Boolean])))
-      )))
-      .recover {
-        case ex: Exception =>
-          // Return a default state which indicates renewals are disabled.
-          Logger.error(s"${logJourneyId(journeyId)} - Failed to retrieve TaxCreditsSubmissionState and exception is ${ex.getMessage}! Default of enabled state is false!")
-          Some(Result(id, JsObject(Seq("enableRenewals" -> JsBoolean(value = false)))))
-      }
-  }
+  override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] =
+    Future successful Some(Result(id, JsObject(Seq("enableRenewals" -> JsBoolean(value = false)))))
 }
 
 case class TaxCreditsRenewals(connector: GenericConnector, journeyId: Option[String]) extends Executor {
