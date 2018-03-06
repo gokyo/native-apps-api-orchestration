@@ -4,11 +4,11 @@ object AppDependencies {
   import play.core.PlayVersion
   import play.sbt.PlayImport._
 
-  private val play25Bootstrap = "1.1.0"
-  private val authClientVersion = "2.4.0"
-  private val domainVersion = "5.0.0"
+  private val play25Bootstrap = "1.4.0"
+  private val authClientVersion = "2.5.0"
+  private val domainVersion = "5.1.0"
   private val playHmrcApiVersion = "2.1.0"
-  private val hmrcEmailAddressVersion = "2.1.0"
+  private val hmrcEmailAddressVersion = "2.2.0"
   private val microserviceAsyncVersion = "2.1.0"
   private val reactiveMongoVersion = "5.2.0"
   private val taxYearVersion = "0.3.0"
