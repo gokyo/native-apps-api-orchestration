@@ -45,7 +45,7 @@ import scala.concurrent.Future
  * 2b, For all of the endpoints defined in the definition.json a documentation.xml needs to be provided and be available under api/documentation/[version]/[endpoint name] GET endpoint
  *     Example: api/documentation/1.0/Fetch-Some-Data
  *
- * See: ***REMOVED***
+ * See: confluence ApiPlatform/API+Platform+Architecture+with+Flows
  */
 class PlatformIntegrationSpec extends BaseISpec with Eventually with WiremockServiceLocatorSugar with ScalaFutures with PlayRunners {
   lazy val testApiServiceLocatorConnector = new TestApiServiceLocatorConnector(null, null, null)
