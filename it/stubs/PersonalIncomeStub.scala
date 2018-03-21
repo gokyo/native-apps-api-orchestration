@@ -16,6 +16,7 @@
 
 package stubs
 
+import com.github.tomakehurst.wiremock.client.WireMock.{aResponse, get, stubFor, urlPathEqualTo}
 import stubs.StubShortcuts._
 
 object PersonalIncomeStub {
@@ -595,4 +596,21 @@ object PersonalIncomeStub {
     stubGetSuccess("/income/tax-credits/submission/state/enabled", response)
   }
 
+  def claimantDetailsAreFound(nino:String) = {
+    val response =
+      s"""
+         |{
+         |  "hasPartner": false,
+         |  "claimantNumber": 1,
+         |  "renewalFormType": "r",
+         |  "mainApplicantNino": "$nino",
+         |  "availableForCOCAutomation": false,
+         |  "applicationId": "some-app-id"
+         |}""".stripMargin
+    stubGetSuccess(s"/income/$nino/tax-credits/claimant-details", response)
+  }
+
+  def claimantDetailsFails(nino:String) = {
+    stubFor(get(urlPathEqualTo(s"/income/$nino/tax-credits/claimant-details")).willReturn(aResponse().withStatus(500).withBody("""{ code":"error", "message":"123" }""")))
+  }
 }

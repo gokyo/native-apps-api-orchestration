@@ -466,7 +466,61 @@ class LiveOrchestrationControllerISpec extends BaseLiveOrchestrationControllerIS
         pollResponse.allHeaders("Cache-Control").head shouldBe "max-age=14400"
       }
     }
+
+  "POST of /native-app/:nino/poll? for claimantDetails" should {
+    val nino = "CS700100A"
+    val requestJson = """{"serviceRequest":[{"name": "claimant-details"}]}"""
+
+    "return claimant details" in {
+      writeAuditSucceeds()
+      authorisedWithStrongCredentials(nino)
+      claimantDetailsAreFound(nino)
+
+      val startupResponse =
+        await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(
+          requestJson, headerThatSucceeds))
+
+      startupResponse.status shouldBe 200
+      startupResponse.body shouldBe """{"status":{"code":"poll"}}"""
+      startupResponse.allHeaders("Set-Cookie").head shouldNot be(empty)
+
+      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(startupResponse)
+      val pollResponse = pollForResponse(nino, headerWithCookie)
+
+      pollResponse.status shouldBe 200
+
+      val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
+      (serviceResponse \ "name").as[String] shouldBe "claimant-details"
+      (serviceResponse \ "responseData" \ "mainApplicantNino").as[String] shouldBe nino
+      (serviceResponse \ "failure").as[Boolean] shouldBe false
+      (pollResponse.json \ "status").get shouldBe Json.obj("code" → "complete")
+    }
+
+    "return failure flag == true when there is an error" in {
+      writeAuditSucceeds()
+      authorisedWithStrongCredentials(nino)
+      claimantDetailsFails(nino)
+
+      val startupResponse =
+        await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(
+          requestJson, headerThatSucceeds))
+
+      startupResponse.status shouldBe 200
+      startupResponse.body shouldBe """{"status":{"code":"poll"}}"""
+      startupResponse.allHeaders("Set-Cookie").head shouldNot be(empty)
+
+      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(startupResponse)
+      val pollResponse = pollForResponse(nino, headerWithCookie)
+
+      pollResponse.status shouldBe 200
+
+      val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
+      (serviceResponse \ "name").as[String] shouldBe "claimant-details"
+      (serviceResponse \ "failure").as[Boolean] shouldBe true
+      (pollResponse.json \ "status").get shouldBe Json.obj("code" → "complete")
+    }
   }
+}
 
 class LiveOrchestrationControllerWithRouteToTwoFactorAlwaysFalseISpec extends BaseLiveOrchestrationControllerISpec {
   override def routeToTwoFactorAlwaysFalse = true
@@ -588,6 +642,60 @@ class LiveOrchestrationControllerWithRouteToTwoFactorAlwaysFalseISpec extends Ba
       pollResponse.allHeaders("Cache-Control").head shouldBe "max-age=14400"
 
       verify(0, getRequestedFor(urlMatching("/multi-factor-authentication")))
+    }
+  }
+
+  "POST of /native-app/:nino/poll? for claimantDetails" should {
+    val nino = "CS700100A"
+    val requestJson = """{"serviceRequest":[{"name": "claimant-details"}]}"""
+
+    "return claimant details" in {
+      writeAuditSucceeds()
+      authorisedWithNinoOnlyReturningWeakCrednetialStrength(nino)
+      claimantDetailsAreFound(nino)
+
+      val startupResponse =
+        await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(
+          requestJson, headerThatSucceeds))
+
+      startupResponse.status shouldBe 200
+      startupResponse.body shouldBe """{"status":{"code":"poll"}}"""
+      startupResponse.allHeaders("Set-Cookie").head shouldNot be(empty)
+
+      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(startupResponse)
+      val pollResponse = pollForResponse(nino, headerWithCookie)
+
+      pollResponse.status shouldBe 200
+
+      val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
+      (serviceResponse \ "name").as[String] shouldBe "claimant-details"
+      (serviceResponse \ "responseData" \ "mainApplicantNino").as[String] shouldBe nino
+      (serviceResponse \ "failure").as[Boolean] shouldBe false
+      (pollResponse.json \ "status").get shouldBe Json.obj("code" → "complete")
+    }
+
+    "return failure flag == true when there is an error" in {
+      writeAuditSucceeds()
+      authorisedWithNinoOnlyReturningWeakCrednetialStrength(nino)
+      claimantDetailsFails(nino)
+
+      val startupResponse =
+        await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(
+          requestJson, headerThatSucceeds))
+
+      startupResponse.status shouldBe 200
+      startupResponse.body shouldBe """{"status":{"code":"poll"}}"""
+      startupResponse.allHeaders("Set-Cookie").head shouldNot be(empty)
+
+      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(startupResponse)
+      val pollResponse = pollForResponse(nino, headerWithCookie)
+
+      pollResponse.status shouldBe 200
+
+      val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
+      (serviceResponse \ "name").as[String] shouldBe "claimant-details"
+      (serviceResponse \ "failure").as[Boolean] shouldBe true
+      (pollResponse.json \ "status").get shouldBe Json.obj("code" → "complete")
     }
   }
 
