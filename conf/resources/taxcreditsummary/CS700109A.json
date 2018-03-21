@@ -5,7 +5,8 @@
         {
           "amount": 225.00,
           "paymentDate": date1,
-          "oneOffPayment": false
+          "oneOffPayment": false,
+          "earlyPayment": false
         }
       ],
       "paymentFrequency": "weekly"

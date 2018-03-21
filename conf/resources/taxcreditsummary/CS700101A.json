@@ -5,17 +5,23 @@
         {
           "amount": 160.00,
           "paymentDate": date1,
-          "oneOffPayment": false
+          "oneOffPayment": false,
+          "earlyPayment": false
         },
         {
           "amount": 160.00,
           "paymentDate": date2,
-          "oneOffPayment": true
+          "oneOffPayment": true,
+          "earlyPayment": false,
+          "explanatoryText": "This is because of a recent change and is to help you get the right amount of tax credits."
         },
         {
           "amount": 160.00,
           "paymentDate": date3,
-          "oneOffPayment": false
+          "oneOffPayment": false,
+          "holidayType": "bankHoliday",
+          "earlyPayment": true,
+          "explanatoryText": "Your payment is early because of UK bank holidays."
         }
       ],
       "paymentFrequency": "weekly"
