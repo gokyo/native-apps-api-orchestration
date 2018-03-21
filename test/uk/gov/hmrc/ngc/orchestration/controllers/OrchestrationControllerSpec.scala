@@ -234,18 +234,24 @@ class OrchestrationControllerSpec extends UnitSpec with WithFakeApplication with
       val controller = new SandboxOrchestrationControllerImpl(fakeApplication.configuration, mockAuditConnector, mockAuthConnector, sandboxOrchestrationService, actorSystem, lifecycle, 10, 10, 200, false)
       val result: mvc.Result = await(controller.poll(Nino(nino))(requestWithAuth))
       status(result) shouldBe 200
-      contentAsJson(result) shouldBe Json.parse(TestData.sandboxPollResponse
-        .replaceAll("previousDate1", currentTime.minusWeeks(2).getMillis.toString)
-        .replaceAll("previousDate2", currentTime.minusWeeks(1).getMillis.toString)
-        .replaceAll("previousDate3", currentTime.getMillis.toString)
-        .replaceAll("date1", currentTime.plusWeeks(1).getMillis.toString)
-        .replaceAll("date2", currentTime.plusWeeks(2).getMillis.toString)
-        .replaceAll("date3", currentTime.plusWeeks(3).getMillis.toString)
-        .replaceAll("date4", currentTime.plusWeeks(4).getMillis.toString)
-        .replaceAll("date5", currentTime.plusWeeks(5).getMillis.toString)
-        .replaceAll("date6", currentTime.plusWeeks(6).getMillis.toString)
-        .replaceAll("date7", currentTime.plusWeeks(7).getMillis.toString)
-        .replaceAll("date8", currentTime.plusWeeks(8).getMillis.toString))
+      val resultJson: JsValue = contentAsJson(result)
+
+      val payments = (resultJson \ "taxCreditSummary" \ "paymentSummary" \ "workingTaxCredit" \ "paymentSeq").as[JsArray]
+
+      val payment1: JsObject = (payments \ 0).get.asInstanceOf[JsObject]
+      payment1.value("oneOffPayment").as[Boolean] shouldBe false
+      payment1.value("earlyPayment").as[Boolean] shouldBe false
+
+      val payment2: JsObject = (payments \ 1).get.asInstanceOf[JsObject]
+      payment2.value("oneOffPayment").as[Boolean] shouldBe false
+      payment2.value("earlyPayment").as[Boolean] shouldBe true
+      payment2.value("holidayType").as[String] shouldBe "bankHoliday"
+      payment2.value("explanatoryText").as[String] shouldBe "Your payment is early because of UK bank holidays."
+
+      val payment3: JsObject = (payments \ 2).get.asInstanceOf[JsObject]
+      payment3.value("oneOffPayment").as[Boolean] shouldBe true
+      payment3.value("earlyPayment").as[Boolean] shouldBe false
+      payment3.value("explanatoryText").as[String] shouldBe "This is because of a recent change and is to help you get the right amount of tax credits."
 
       result.header.headers.get("Cache-Control") shouldBe Some("max-age=14400")
     }
