@@ -228,7 +228,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 0
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 0
     }
 
@@ -255,7 +254,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 0
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 0
     }
 
@@ -282,7 +280,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 0
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 0
     }
 
@@ -300,7 +297,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 1
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 1
     }
 
@@ -317,7 +313,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").size shouldBe 1
       (response \\ "taxCreditSummary").size shouldBe 1
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 1
     }
 
@@ -336,7 +331,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").head  shouldBe Json.obj()
       (response \\ "taxCreditSummary").head shouldBe Json.obj()
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 0
     }
 
@@ -353,7 +347,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(randomUUID)))
       (response \\ "taxSummary").head  shouldBe Json.obj()
       (response \\ "taxCreditSummary").head shouldBe Json.obj()
-      (response \\ "state").size shouldBe 1
       (response \\ "campaigns").size shouldBe 0
       verify(mockGenericConnector, times(0))
         .doPost(any[JsValue](), anyString(), eqs(pushRegistration), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]())
