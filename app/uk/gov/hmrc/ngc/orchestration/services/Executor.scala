@@ -53,17 +53,6 @@ case class TaxSummary(connector: GenericConnector, journeyId: Option[String]) ex
   }
 }
 
-/*
-  the state section of the poll payload is considered deprecated as of  NGC-2408
-  dependent apps will be updated to use taxCreditRenewals instead
- */
-case class TaxCreditsSubmissionState(connector: GenericConnector, journeyId: Option[String]) extends Executor {
-  override val id = "state"
-  override val serviceName = "personal-income"
-  override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] =
-    Future successful Some(Result(id, JsObject(Seq("enableRenewals" -> JsBoolean(value = false)))))
-}
-
 case class TaxCreditsRenewals(connector: GenericConnector, journeyId: Option[String]) extends Executor {
   override val id = "taxCreditRenewals"
   override val serviceName = "personal-income"
@@ -73,7 +62,7 @@ case class TaxCreditsRenewals(connector: GenericConnector, journeyId: Option[Str
         Some(Result(id, JsObject(Seq("submissionsState" -> JsString(res.\("submissionsState").as[String])))))
     ).recover {
       case ex: Exception =>
-        Logger.error(s"${logJourneyId(journeyId)} - Failed to retrieve TaxCreditsSubmissionState and exception is ${ex.getMessage}! Default of submissionsState is error!")
+        Logger.error(s"${logJourneyId(journeyId)} - Failed to retrieve TaxCreditsRenewals and exception is ${ex.getMessage}! Default of submissionsState is error!")
         Some(Result(id, JsObject(Seq("submissionsState" -> JsString(value = "error")))))
     }
   }

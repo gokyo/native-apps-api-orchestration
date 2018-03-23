@@ -121,7 +121,6 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     val futuresSeq: Seq[Future[Option[Result]]] = Seq(
       TaxSummary(genericConnector, journeyId),
       TaxCreditSummary(genericConnector, journeyId),
-      TaxCreditsSubmissionState(genericConnector, journeyId),
       TaxCreditsRenewals(genericConnector, journeyId),
       PushRegistration(genericConnector, inputRequest, journeyId),
       HelpToSaveStartup(Logger, genericConnector)

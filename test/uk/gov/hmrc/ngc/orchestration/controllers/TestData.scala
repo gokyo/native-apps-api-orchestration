@@ -1330,9 +1330,6 @@ object TestData {
         ]
       }
     },
-    "state": {
-      "enableRenewals": true
-    },
     "campaigns": [
       {
         "campaignId": "HELP_TO_SAVE_1",

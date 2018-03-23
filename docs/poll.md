@@ -44,9 +44,6 @@ On success the below JSON will be returned. Please see notes below detailing the
   "taxCreditSummary": {
     // see https://github.com/hmrc/personal-income/blob/master/docs/tax-credits-summary.md
   },
-  "state": {
-    "enableRenewals": true
-  },
   "taxCreditRenewals": {
     "submissionsState": "open"|"check_status_only"|"closed"|"shuttered"|"error"
   },
@@ -69,7 +66,6 @@ If the response attribute 'taxSummary' is empty (contains no attributes) then th
 |------------------|-------------|---------------|
 | `taxSummary` | yes | See <https://github.com/hmrc/personal-income/blob/master/docs/tax-summary.md> |
 | `taxCreditSummary` | no | See <https://github.com/hmrc/personal-income/blob/master/docs/tax-credits-summary.md> |
-| `state` | yes | See <https://github.com/hmrc/personal-income/blob/master/docs/tax-credits-submission-state.md> |
 
 
 

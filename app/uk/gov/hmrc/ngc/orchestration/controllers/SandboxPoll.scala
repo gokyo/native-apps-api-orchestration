@@ -95,7 +95,6 @@ trait SandboxPoll extends FileResource with ConfiguredCampaigns {
   private def generateTaxSummaryResponse(nino: Nino, asyncStatus: JsObject) = {
     val resource: Option[String] = findResource(s"/resources/getsummary/${nino}_2016.json")
 
-    val stateJson = JsObject(Seq("enableRenewals" -> JsBoolean(value = true)))
     // Build the results based on the above stubbed data.
     val currentTime = (new LocalDate()).toDateTimeAtStartOfDay
 
@@ -118,13 +117,12 @@ trait SandboxPoll extends FileResource with ConfiguredCampaigns {
     val taxCreditSummaryResult = Result("taxCreditSummary", taxCreditSummary)
 
     val campaigns = configuredCampaigns(hasData, Json.obj("taxCreditSummary" -> taxCreditSummary))
-    val state = Result("state", stateJson)
 
-    val jsonResponseAttributes = if (!campaigns.isEmpty) {
+    val jsonResponseAttributes = if (campaigns.nonEmpty) {
       val confCampaigns = Result("campaigns", Json.toJson(Json.toJson(campaigns)))
-      Seq(taxSummary, taxCreditSummaryResult, state, confCampaigns).map(b => Json.obj(b.id -> b.jsValue))
+      Seq(taxSummary, taxCreditSummaryResult, confCampaigns).map(b => Json.obj(b.id -> b.jsValue))
     } else {
-      Seq(taxSummary, taxCreditSummaryResult, state).map(b => Json.obj(b.id -> b.jsValue))
+      Seq(taxSummary, taxCreditSummaryResult).map(b => Json.obj(b.id -> b.jsValue))
     }
     AsyncResponse(jsonResponseAttributes.foldLeft(Json.obj())((b, a) => b ++ a) ++ asyncStatus, nino)
   }
