@@ -19,11 +19,11 @@ package uk.gov.hmrc.ngc.orchestration.controllers
 import javax.inject.{Inject, Named, Provider, Singleton}
 
 import akka.actor.ActorSystem
-import play.api.{Configuration, Logger}
 import play.api.http.HeaderNames
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsSuccess, JsValue, Json}
 import play.api.mvc._
+import play.api.{Configuration, Logger}
 import play.modules.reactivemongo.ReactiveMongoComponent
 import uk.gov.hmrc.api.controllers.HeaderValidator
 import uk.gov.hmrc.api.service.Auditor
@@ -191,8 +191,7 @@ class LiveOrchestrationController  @Inject()(
   @Named("supported.generic.service.max") override val serviceMax: Int,
   @Named("supported.generic.event.max") override val eventMax: Int,
   @Named("controllers.confidenceLevel") override val confLevel: Int,
-  @Named("poll.success.maxAge") override val maxAgeForSuccess: Int,
-  @Named("routeToTwoFactorAlwaysFalse") override val routeToTwoFactorAlwaysFalse: Boolean ) extends NativeAppsOrchestrationController {
+  @Named("poll.success.maxAge") override val maxAgeForSuccess: Int ) extends NativeAppsOrchestrationController {
 
   override val app: String = "Live-Orchestration-Controller"
   override lazy val repository: AsyncRepository = new AsyncMongoRepository()(reactiveMongo.get().mongoConnector.db)
