@@ -25,6 +25,8 @@ class SandboxOrchestrationControllerISpec extends BaseISpec {
   "POST of /native-app/preflight-check with X-MOBILE-USER-ID header" should {
     "successfully switch to the sandbox preflight" in {
       val nino = "CS700100A"
+      // until the apps are changed to remove "mfa" then include it as input but it should be ignored
+      // also routeToTwoFactor is still specified and should always be false
       val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
       val response = await(new Resource(s"/native-app/preflight-check?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
@@ -38,8 +40,8 @@ class SandboxOrchestrationControllerISpec extends BaseISpec {
   "POST of /native-app/:nino/startup with X-MOBILE-USER-ID header" should {
     "successfully switch to sandbox startup with poll mimicking the live controllers asynchronous response of the startup call" in {
       val nino = "CS700100A"
-      val currentTime = (new LocalDate()).toDateTimeAtStartOfDay
-      val postRequest = """{"os":"ios","version":"0.1.0","mfa":{"operation":"start"}}"""
+      val currentTime = (new LocalDate).toDateTimeAtStartOfDay
+      val postRequest = """{"os":"ios","version":"0.1.0"}"""
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
       response.body shouldBe """{"status":{"code":"poll"}}"""
@@ -49,7 +51,7 @@ class SandboxOrchestrationControllerISpec extends BaseISpec {
         await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
       }
       pollResponse.status shouldBe 200
-      (pollResponse.json \\ "taxSummary") shouldNot(be(empty))
+      (pollResponse.json \\ "taxSummary") shouldNot be(empty)
     }
 
     "successfully switch to sandbox startup with poll mimicking the live controllers asynchronous response of the startup call " +

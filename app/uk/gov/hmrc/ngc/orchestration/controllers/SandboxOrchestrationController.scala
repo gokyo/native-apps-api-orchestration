@@ -99,7 +99,6 @@ class SandboxOrchestrationControllerImpl @Inject()(
   override val lifecycle: ApplicationLifecycle,
   @Named("supported.generic.service.max") override val serviceMax: Int,
   @Named("supported.generic.event.max") override val eventMax: Int,
-  @Named("controllers.confidenceLevel") override val confLevel: Int,
-  @Named("routeToTwoFactorAlwaysFalse") override val routeToTwoFactorAlwaysFalse: Boolean ) extends SandboxOrchestrationController {
+  @Named("controllers.confidenceLevel") override val confLevel: Int ) extends SandboxOrchestrationController {
   override val maxAgeForSuccess: Int = 14400
 }

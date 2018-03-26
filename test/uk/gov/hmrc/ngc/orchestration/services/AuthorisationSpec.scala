@@ -22,11 +22,11 @@ import org.scalamock.scalatest.MockFactory
 import org.scalatest.OneInstancePerTest
 import uk.gov.hmrc.auth.core.AffinityGroup.Individual
 import uk.gov.hmrc.auth.core.ConfidenceLevel.{L100, L200, L50}
+import uk.gov.hmrc.auth.core._
 import uk.gov.hmrc.auth.core.authorise.{EmptyPredicate, Predicate}
-import uk.gov.hmrc.auth.core.retrieve.Retrievals.{nino, _}
-import uk.gov.hmrc.auth.core.retrieve.{Retrieval, _}
+import uk.gov.hmrc.auth.core.retrieve.Retrievals._
+import uk.gov.hmrc.auth.core.retrieve._
 import uk.gov.hmrc.auth.core.syntax.retrieved._
-import uk.gov.hmrc.auth.core.{AuthConnector, _}
 import uk.gov.hmrc.domain.{Nino, SaUtr}
 import uk.gov.hmrc.http.HeaderCarrier
 import uk.gov.hmrc.ngc.orchestration.controllers.{AccountWithLowCL, FailToMatchTaxIdOnAuth, NinoNotFoundOnAccount}
@@ -34,9 +34,7 @@ import uk.gov.hmrc.play.test.UnitSpec
 
 import scala.concurrent.{ExecutionContext, Future}
 
-trait BaseAuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTest {
-
-
+class AuthorisationSpec extends UnitSpec with MockFactory with OneInstancePerTest {
   implicit val hc = HeaderCarrier()
 
   val journeyId: String = randomUUID().toString
@@ -44,37 +42,36 @@ trait BaseAuthorisationSpec extends UnitSpec with MockFactory with OneInstancePe
   val testSaUtr: SaUtr = SaUtr("1872796160")
   val mockAuthConnector: AuthConnector = mock[AuthConnector]
 
-  type AccountsRetrieval = Retrieval[Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ Credentials ~ Option[String] ~ ConfidenceLevel]
+  type AccountsRetrieval = Retrieval[Option[String] ~ Option[String] ~ Option[AffinityGroup] ~ Credentials ~ ConfidenceLevel]
 
   type GrantAccessRetrieval = Retrieval[Option[String] ~ ConfidenceLevel]
 
-  val accountsRetrievals = nino and saUtr and affinityGroup and credentials and credentialStrength and confidenceLevel
+  val accountsRetrievals = nino and saUtr and affinityGroup and credentials and confidenceLevel
 
   val grantAccessRetrievals = nino and confidenceLevel
 
   val userCredentials = Credentials("some-cred-id", "GovernmentGateway")
 
-  def getRouteToTwoFactorAlwaysFalse: Boolean = ???
-  def authPredicate(nino: Nino): Predicate = ???
+  def authPredicate(nino: Nino): Predicate = {
+    Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", nino.nino)), "Activated", None)
+  }
 
   def authorisation(mockAuthConnector: AuthConnector): Authorisation = {
     new Authorisation {
       override val confLevel: Int = 200
       override def authConnector: AuthConnector = mockAuthConnector
-      override val routeToTwoFactorAlwaysFalse: Boolean = getRouteToTwoFactorAlwaysFalse
     }
   }
 
-  def authoriseWillAllowAccessForEmptyPredicate(authConnector: AuthConnector, nino: Option[Nino], saUtr: SaUtr, affinityGroup: Option[AffinityGroup],
-                                                credentials: Credentials, credStrength: Option[String],
-                          confLevel: ConfidenceLevel) = {
+  def authoriseWillAllowAccessForEmptyPredicate(
+    authConnector: AuthConnector, nino: Option[Nino], saUtr: SaUtr, affinityGroup: Option[AffinityGroup], credentials: Credentials, confLevel: ConfidenceLevel) = {
     val returningNino = if (nino.isDefined) Some(nino.get.nino) else None
     (authConnector.authorise(_: Predicate, _: AccountsRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(EmptyPredicate, accountsRetrievals, *, *)
-      .returning(Future.successful(returningNino and Option(saUtr.value) and affinityGroup and credentials and credStrength and confLevel))
+      .returning(Future.successful(returningNino and Option(saUtr.value) and affinityGroup and credentials and confLevel))
   }
 
-  def authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(nino: Nino, confLevel: ConfidenceLevel, returnNino: Option[String]) = {
+  def authoriseWillAllowAccessForNinoPredicates(nino: Nino, confLevel: ConfidenceLevel, returnNino: Option[String]) = {
     (mockAuthConnector.authorise(_: Predicate, _: GrantAccessRetrieval)(_: HeaderCarrier, _: ExecutionContext))
       .expects(authPredicate(nino), grantAccessRetrievals, *, *)
       .returning(Future.successful(returnNino and confLevel))
@@ -82,26 +79,23 @@ trait BaseAuthorisationSpec extends UnitSpec with MockFactory with OneInstancePe
 
   "Authorisation getAccounts" should {
 
-    "find the user and routeToIV and routeToTwoFactor should be false when credential strength is 'strong' and confidence is L200" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("strong"), L200)
+    "find the user and routeToIV should be false when confidence is L200" in {
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
-      accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe false
       accounts.nino.get.nino shouldBe testNino.nino
       accounts.saUtr.get.value shouldBe testSaUtr.value
       accounts.journeyId shouldBe journeyId
     }
 
     "ignore the supplied journeyId when blank" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("strong"), L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, L200)
       val emptyJourneyId = ""
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(emptyJourneyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
       accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe false
       accounts.nino.get.nino shouldBe testNino.nino
       accounts.saUtr.get.value shouldBe testSaUtr.value
       accounts.journeyId should not be emptyJourneyId
@@ -109,12 +103,11 @@ trait BaseAuthorisationSpec extends UnitSpec with MockFactory with OneInstancePe
     }
 
     "generates new journeyId when no journeyId supplied" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("strong"), L200)
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(None))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
       accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe false
       accounts.nino.get.nino shouldBe testNino.nino
       accounts.saUtr.get.value shouldBe testSaUtr.value
       accounts.journeyId should not be None
@@ -123,7 +116,7 @@ trait BaseAuthorisationSpec extends UnitSpec with MockFactory with OneInstancePe
 
     "throws an UnsupportedAuthProvider AuthorisationException if the AuthProvider is not GovernmentGateway" in {
       intercept[UnsupportedAuthProvider] {
-        authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), Credentials("some-cred-id", "Not_Government_Gateway"), Some("strong"), L200)
+        authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), Credentials("some-cred-id", "Not_Government_Gateway"),  L200)
         await(authorisation(mockAuthConnector).getAccounts(None))
       }
     }
@@ -131,125 +124,68 @@ trait BaseAuthorisationSpec extends UnitSpec with MockFactory with OneInstancePe
 
   "Authorisation grantAccess" should {
 
-    "successfully grant access when nino exists and confidence level is 200 and credential strength is strong" in {
-      authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(testNino, L200, Some(testNino.nino))
+    "successfully grant access when nino exists and confidence level is 200" in {
+      authoriseWillAllowAccessForNinoPredicates(testNino, L200, Some(testNino.nino))
       val authority = await(authorisation(mockAuthConnector).grantAccess(testNino))
       authority.nino.value shouldBe testNino.nino
     }
 
     "error with unauthorised when account has low CL" in {
-      authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(testNino, L100, Some(testNino.nino))
+      authoriseWillAllowAccessForNinoPredicates(testNino, L100, Some(testNino.nino))
       intercept[AccountWithLowCL] {
         await(authorisation(mockAuthConnector).grantAccess(testNino))
       }
     }
 
     "fail to return authority when no NINO exists" in {
-      authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(testNino, L200, None)
+      authoriseWillAllowAccessForNinoPredicates(testNino, L200, None)
       intercept[NinoNotFoundOnAccount] {
         await(authorisation(mockAuthConnector).grantAccess(testNino))
       }
 
-      authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(testNino, L200, Some(""))
+      authoriseWillAllowAccessForNinoPredicates(testNino, L200, Some(""))
       intercept[NinoNotFoundOnAccount] {
         await(authorisation(mockAuthConnector).grantAccess(testNino))
       }
     }
 
     "fail to return authority when auth NINO does not match request NINO" in {
-      authoriseWillAllowAccessForNinoAndCredStrengthStrongPredicates(testNino, L200, Some("AB123450C"))
+      authoriseWillAllowAccessForNinoPredicates(testNino, L200, Some("AB123450C"))
       intercept[FailToMatchTaxIdOnAuth] {
         await(authorisation(mockAuthConnector).grantAccess(testNino))
       }
     }
   }
-}
 
-class AuthorisationSpec extends BaseAuthorisationSpec {
-  override def getRouteToTwoFactorAlwaysFalse = false
-
-  override def authPredicate(nino: Nino): Predicate = {
-    Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", nino.nino)), "Activated", None) and CredentialStrength(CredentialStrength.strong)
-  }
-
-  "Authorisation getAccounts with getRouteToTwoFactorAlwaysFalse == false" should {
-    "find the user and routeToIV and routeToTwoFactor should be true" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("weak"), L50)
+  "Authorisation getAccounts" should {
+    "find the user with with L50 confidence level returning routeToIV true" in {
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, L50)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
       accounts.routeToIV shouldBe true
-      accounts.routeToTwoFactor shouldBe true
       accounts.nino.get.nino shouldBe testNino.nino
       accounts.saUtr.get.value shouldBe testSaUtr.value
       accounts.journeyId shouldBe journeyId
     }
 
-    "find the user and routeToIV is false when L200 confidence level and routeToTwoFactor is true" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("weak"), L200)
+    "find a user with ith L200 confidence level returning routeToIV false" in {
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
       accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe true
       accounts.nino.get.nino shouldBe testNino.nino
       accounts.saUtr.get.value shouldBe testSaUtr.value
       accounts.journeyId shouldBe journeyId
     }
 
-    "find the user with an account with no nino" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, None, testSaUtr, Some(Individual), userCredentials, Some("weak"), L200)
+    "find a user with an account with no nino" in {
+      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, None, testSaUtr, Some(Individual), userCredentials, L200)
       val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
       accounts.credId shouldBe "some-cred-id"
       accounts.affinityGroup shouldBe "Individual"
       accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe true
-      accounts.nino shouldBe None
-      accounts.saUtr.get.value shouldBe testSaUtr.value
-      accounts.journeyId shouldBe journeyId
-    }
-  }
-}
-
-class AuthorisationWithGetRouteToTwoFactorAlwaysFalseSpec extends BaseAuthorisationSpec {
-  override def getRouteToTwoFactorAlwaysFalse = true
-
-  override def authPredicate(nino: Nino): Predicate = {
-    Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", nino.nino)), "Activated", None)
-  }
-
-  "Authorisation getAccounts with getRouteToTwoFactorAlwaysFalse == true" should {
-    "find the user with with L50 confidence level returning routeToIV true and routeToTwoFactor false" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("weak"), L50)
-      val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
-      accounts.credId shouldBe "some-cred-id"
-      accounts.affinityGroup shouldBe "Individual"
-      accounts.routeToIV shouldBe true
-      accounts.routeToTwoFactor shouldBe false
-      accounts.nino.get.nino shouldBe testNino.nino
-      accounts.saUtr.get.value shouldBe testSaUtr.value
-      accounts.journeyId shouldBe journeyId
-    }
-
-    "find a user with ith L200 confidence level returning routeToIV and routeToTwoFactor both false" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, Some(testNino), testSaUtr, Some(Individual), userCredentials, Some("weak"), L200)
-      val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
-      accounts.credId shouldBe "some-cred-id"
-      accounts.affinityGroup shouldBe "Individual"
-      accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe false
-      accounts.nino.get.nino shouldBe testNino.nino
-      accounts.saUtr.get.value shouldBe testSaUtr.value
-      accounts.journeyId shouldBe journeyId
-    }
-
-    "find a user with an account with no nino and return routeToTwoFactor false" in {
-      authoriseWillAllowAccessForEmptyPredicate(mockAuthConnector, None, testSaUtr, Some(Individual), userCredentials, Some("weak"), L200)
-      val accounts = await(authorisation(mockAuthConnector).getAccounts(Some(journeyId)))
-      accounts.credId shouldBe "some-cred-id"
-      accounts.affinityGroup shouldBe "Individual"
-      accounts.routeToIV shouldBe false
-      accounts.routeToTwoFactor shouldBe false
       accounts.nino shouldBe None
       accounts.saUtr.get.value shouldBe testSaUtr.value
       accounts.journeyId shouldBe journeyId

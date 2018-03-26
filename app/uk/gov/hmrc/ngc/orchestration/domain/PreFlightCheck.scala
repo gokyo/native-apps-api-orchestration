@@ -20,24 +20,9 @@ import play.api.libs.json._
 import uk.gov.hmrc.domain.{Nino, SaUtr}
 import play.api.libs.functional.syntax._
 
-case class PreFlightCheckResponse(upgradeRequired: Boolean, accounts: Accounts, mfaURI:Option[MfaURI]=None)
+case class PreFlightCheckResponse(upgradeRequired: Boolean, accounts: Accounts)
 
 case class Browser()
-
-case class MfaURI(webURI:String, apiURI:String)
-
-object MfaURI {
-  implicit val reads = (
-    (JsPath \ "_links" \ "browser" \ "href").read[String] and
-    (JsPath \ "_links" \ "self" \ "href").read[String]
-  ) (MfaURI.apply _)
-
-  implicit val writes = new Writes[MfaURI] {
-    def writes(uri: MfaURI) = Json.obj(
-      "webURI" -> uri.webURI,
-      "apiURI" -> uri.apiURI)
-  }
-}
 
 object PreFlightCheckResponse {
 
@@ -46,17 +31,18 @@ object PreFlightCheckResponse {
   implicit val preFlightCheckResponseFmt = Json.format[PreFlightCheckResponse]
 }
 
-case class Accounts(nino: Option[Nino], saUtr: Option[SaUtr], routeToIV : Boolean, routeToTwoFactor: Boolean, journeyId: String, credId:String, affinityGroup:String)
+case class Accounts(nino: Option[Nino], saUtr: Option[SaUtr], routeToIV : Boolean, journeyId: String, credId:String,
+                    affinityGroup:String, @Deprecated routeToTwoFactor: Boolean = false)
 
 object Accounts {
   implicit val reads = (
     (JsPath \ "nino").readNullable[Nino] and
       (JsPath \ "saUtr").readNullable[SaUtr] and
       (JsPath \ "routeToIV").read[Boolean] and
-      (JsPath \ "routeToTwoFactor").read[Boolean] and
       (JsPath \ "journeyId").read[String] and
       (JsPath \ "credId").read[String] and
-      (JsPath \ "affinityGroup").read[String]
+      (JsPath \ "affinityGroup").read[String] and
+      (JsPath \ "routeToTwoFactor").read[Boolean]
     ) (Accounts.apply _)
 
     implicit val writes = new Writes[Accounts] {

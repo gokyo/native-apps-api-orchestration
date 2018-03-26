@@ -16,11 +16,9 @@
 
 package uk.gov.hmrc.ngc.orchestration.services
 
-import java.util.UUID
+import java.util.UUID.randomUUID
 
-import uk.gov.hmrc.auth.core.CredentialStrength.strong
 import uk.gov.hmrc.auth.core._
-import uk.gov.hmrc.auth.core.authorise.Predicate
 import uk.gov.hmrc.auth.core.retrieve.Retrievals._
 import uk.gov.hmrc.auth.core.retrieve.~
 import uk.gov.hmrc.domain.{Nino, SaUtr}
@@ -41,17 +39,15 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
 
   self: Confidence ⇒
 
-  val routeToTwoFactorAlwaysFalse: Boolean
-
   def getAccounts(journeyId: Option[String])(implicit hc: HeaderCarrier) = {
     authorised()
-      .retrieve(nino and saUtr and affinityGroup and credentials and credentialStrength and confidenceLevel) {
-      case nino ~ saUtr ~ affinityGroup ~ credentials ~ credentialStrength ~ confidenceLevel ⇒ {
+      .retrieve(nino and saUtr and affinityGroup and credentials and confidenceLevel) {
+      case nino ~ saUtr ~ affinityGroup ~ credentials ~ confidenceLevel ⇒ {
         val routeToIV = confLevel > confidenceLevel.level
-        val journeyIdentifier = journeyId.filter(id ⇒ id.length > 0).getOrElse(UUID.randomUUID().toString)
+        val journeyIdentifier = journeyId.filter(id ⇒ id.length > 0).getOrElse(randomUUID().toString)
         if (credentials.providerType != "GovernmentGateway") throw new UnsupportedAuthProvider
-        Future(Accounts(nino.map(Nino(_)), saUtr.map(SaUtr(_)), routeToIV, twoFactorRequired(credentialStrength),
-          journeyIdentifier, credentials.providerId, affinityGroup.get.toString()))
+        Future(Accounts(nino.map(Nino(_)), saUtr.map(SaUtr(_)), routeToIV,
+          journeyIdentifier, credentials.providerId, affinityGroup.get.toString))
       }
     }
   }
@@ -61,14 +57,7 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
     lazy val failedToMatchNino = new FailToMatchTaxIdOnAuth
     lazy val lowConfidenceLevel = new AccountWithLowCL
 
-    val predicate: Predicate = {
-      val enrolment = Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", requestedNino.value)), "Activated", None)
-
-      if (routeToTwoFactorAlwaysFalse) enrolment
-      else enrolment and CredentialStrength(strong)
-    }
-
-    authorised(predicate)
+    authorised(Enrolment("HMRC-NI", Seq(EnrolmentIdentifier("NINO", requestedNino.value)), "Activated", None))
       .retrieve(nino and confidenceLevel) {
         case Some(nino) ~ confidenceLevel ⇒ {
           if (nino.isEmpty) throw ninoNotFoundOnAccount
@@ -81,14 +70,4 @@ trait Authorisation extends AuthorisedFunctions with Confidence {
         }
       }
   }
-
-  private def twoFactorRequired(credentialStrength: Option[String]) = {
-    if (routeToTwoFactorAlwaysFalse) {
-      false
-    } else {
-      !credentialStrength.contains(strong)
-    }
-  }
-
-
 }

@@ -46,8 +46,6 @@ class GuiceModule(environment: Environment, configuration: Configuration) extend
     bindConfigInt("poll.success.maxAge")
 
     bindConfigStringSeq("scopes")
-
-    bindConfigBoolean("routeToTwoFactorAlwaysFalse")
   }
 
   /**

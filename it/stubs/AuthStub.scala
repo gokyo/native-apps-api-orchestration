@@ -19,29 +19,19 @@ import play.api.libs.json.{JsObject, JsString, Json}
   */
 object AuthStub {
 
-  def authorisedWithStrongCredentials(nino: String): Unit = {
-    authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "strong")
-    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "strong")
+  def authorised(nino: String): Unit = {
+    authoriseWithNoPredicatesWillReturn200(Some(nino))
+    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino)
   }
 
-  def authorisedWithNinoOnlyReturningWeakCrednetialStrength(nino: String): Unit = {
-    authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "weak")
-    authoriseWithNinoOnlyMatchingNino(nino)
-  }
-
-  def authorisedWithWeakCredentials(nino: String): Unit = {
-    authoriseWithNoPredicatesWillReturn200(Some(nino), credentialStrengthToReturn = "weak")
-    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "weak")
-  }
-
-  def authorisedWithStrongCredentialsAndNoNino(): Unit = {
-    authoriseWithNoPredicatesWillReturn200(nino = None, credentialStrengthToReturn = "weak")
+  def authorisedWithNoNino(): Unit = {
+    authoriseWithNoPredicatesWillReturn200(nino = None)
     authorisedWithNinoPredicateWillReturn401()
   }
 
-  def authorisedWithStrongCredentialsAndNotGovernmentGateway(nino: String): Unit = {
-    authoriseWithNoPredicatesWillReturn200(nino = None, credentialStrengthToReturn = "weak", "Not_Government_Gateway")
-    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino, predicateCredentialStrength = "strong")
+  def authorisedButNotGovernmentGateway(nino: String): Unit = {
+    authoriseWithNoPredicatesWillReturn200(nino = None, "Not_Government_Gateway")
+    authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino)
   }
 
   def notAuthorised(): Unit = {
@@ -50,7 +40,7 @@ object AuthStub {
         .withStatus(401)))
   }
 
-  private def authoriseWithNoPredicatesWillReturn200(nino: Option[String], credentialStrengthToReturn: String, providerType: String = "GovernmentGateway"): Unit = {
+  private def authoriseWithNoPredicatesWillReturn200(nino: Option[String], providerType: String = "GovernmentGateway"): Unit = {
     stubFor(post(urlEqualTo("/auth/authorise"))
         .withRequestBody(equalToJson(
           """
@@ -61,7 +51,6 @@ object AuthStub {
             |    "saUtr",
             |    "affinityGroup",
             |    "credentials",
-            |    "credentialStrength",
             |    "confidenceLevel"
             |  ]
             |}
@@ -77,7 +66,6 @@ object AuthStub {
               "providerId" → "Some-Cred-Id",
               "providerType" → providerType
             ),
-            "credentialStrength" -> credentialStrengthToReturn,
             "confidenceLevel" -> 200
           ),
           nino).toString)))
@@ -87,7 +75,7 @@ object AuthStub {
     maybeNino.fold(input)(nino => input + ("nino" -> JsString(nino)))
   }
 
-  private def authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino: String, predicateCredentialStrength: String): Unit = {
+  private def authoriseWithNinoPredicateWillReturn200ForMatchingNino(nino: String): Unit = {
     // catch-all case for when /auth/authorised is called with a non-matching NINO
     authorisedWithNinoPredicateWillReturn401(1)
 
@@ -107,9 +95,6 @@ object AuthStub {
             |        }
             |      ],
             |      "state": "Activated"
-            |    },
-            |    {
-            |      "credentialStrength": "$predicateCredentialStrength"
             |    }
             |  ],
             |  "retrieve": [

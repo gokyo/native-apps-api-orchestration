@@ -20,6 +20,7 @@ import java.util.UUID.randomUUID
 
 import com.google.inject.name.Named
 import com.google.inject.{Inject, Singleton}
+import play.api.libs.json.Json.toJson
 import play.api.libs.json._
 import play.api.{Configuration, Logger}
 import uk.gov.hmrc.api.sandbox.FileResource
@@ -46,10 +47,9 @@ object DeviceVersion {
   implicit val formats: Format[DeviceVersion] = Json.format[DeviceVersion]
 }
 
-case class PreFlightRequest(os: String, version:String, mfa:Option[MFARequest])
+case class PreFlightRequest(os: String, version:String)
 
 object PreFlightRequest {
-  implicit val mfa: Format[MFARequest] = MFARequest.formats
   implicit val formats: Format[PreFlightRequest] = Json.format[PreFlightRequest]
 }
 
@@ -63,33 +63,21 @@ trait OrchestrationService {
 }
 
 @Singleton
-class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
-                                         executorFactory: ExecutorFactory,
+class LiveOrchestrationService @Inject()(executorFactory: ExecutorFactory,
                                          genericConnector: GenericConnector,
                                          val appNameConfiguration: Configuration,
                                          val auditConnector: AuditConnector,
                                          val authConnector: AuthConnector,
-                                         @Named("controllers.confidenceLevel") val confLevel: Int,
-                                         @Named("routeToTwoFactorAlwaysFalse") override val routeToTwoFactorAlwaysFalse: Boolean)
+                                         @Named("controllers.confidenceLevel") val confLevel: Int)
   extends OrchestrationService with Authorisation with Auditor with ConfiguredCampaigns {
 
   override def preFlightCheck(request:PreFlightRequest, journeyId: Option[String])(implicit hc: HeaderCarrier): Future[PreFlightCheckResponse] = {
     withAudit("preFlightCheck", Map.empty) {
       for {
         accounts <- getAccounts(journeyId)
-        mfaOutcome <- mfaIntegration.mfaDecision(accounts, request.mfa, journeyId)
         versionUpdate <- getVersion(journeyId, request.os, request.version)
       } yield {
-        val mfaURI: Option[MfaURI] = mfaOutcome.fold(Option.empty[MfaURI]){ _.mfa}
-        // If authority has been updated then override the original accounts response from auth.
-        val returnAccounts = mfaOutcome.fold(accounts) { found =>
-          if (routeToTwoFactorAlwaysFalse || found.authUpdated)
-            accounts.copy(routeToTwoFactor = false)
-          else {
-            accounts.copy(routeToTwoFactor = found.routeToTwoFactor)
-          }
-        }
-        PreFlightCheckResponse(versionUpdate, returnAccounts, mfaURI)
+        PreFlightCheckResponse(versionUpdate, accounts.copy())
       }
     }
   }
@@ -129,7 +117,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     for (results <- sequence(futuresSeq).map(_.flatten)) yield {
       val response = results.map(b => Json.obj(b.id -> b.jsValue))
       val campaigns = configuredCampaigns(hasData, response.foldLeft(Json.obj())((obj, a) => obj ++ a))
-      response ++ (if(campaigns.nonEmpty) Seq(Json.obj("campaigns" -> Json.toJson(campaigns))) else Seq.empty)
+      response ++ (if(campaigns.nonEmpty) Seq(Json.obj("campaigns" -> toJson(campaigns))) else Seq.empty)
     }
   }
 
@@ -138,7 +126,7 @@ class LiveOrchestrationService @Inject()(mfaIntegration: MFAIntegration,
     def buildJourney = journeyId.fold("")(id ⇒ s"?journeyId=$id")
     val device = DeviceVersion(os, version)
     val path = s"/profile/native-app/version-check$buildJourney"
-    genericConnector.doPost[JsValue](Json.toJson(device), "customer-profile", path, hc).map {
+    genericConnector.doPost[JsValue](toJson(device), "customer-profile", path, hc).map {
       resp ⇒ (resp \ "upgrade").as[Boolean]
     }.recover{
       // Default to false - i.e. no upgrade required.
@@ -194,7 +182,7 @@ class SandboxOrchestrationService @Inject() (genericConnector: GenericConnector,
 
   private def buildPreFlightResponse() : PreFlightCheckResponse = {
     PreFlightCheckResponse(upgradeRequired = false, Accounts(Some(Nino("CS700100A")), None, routeToIV = false,
-      routeToTwoFactor = false, randomUUID().toString, "credId-1234", "Individual"))
+      randomUUID().toString, "credId-1234", "Individual"))
   }
 
 }

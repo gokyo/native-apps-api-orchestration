@@ -16,13 +16,13 @@
 
 package uk.gov.hmrc.ngc.orchestration.controllers
 
-import play.api.libs.json.Json
+import play.api.libs.json.Json.toJson
 import play.api.{Logger, mvc}
 import uk.gov.hmrc.api.controllers._
 import uk.gov.hmrc.auth.core.AuthorisationException
-import uk.gov.hmrc.http.{HeaderCarrier, NotFoundException, Upstream4xxResponse}
+import uk.gov.hmrc.http.{HeaderCarrier, HttpException, NotFoundException, Upstream4xxResponse}
 import uk.gov.hmrc.play.bootstrap.controller.BaseController
-import uk.gov.hmrc.http.HttpException
+
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 
@@ -38,8 +38,6 @@ case object MandatoryResponse extends ErrorResponse(500, "MANDATORY", "Mandatory
 
 case object ForbiddenAccess extends ErrorResponse(403, "UNAUTHORIZED", "Access denied!")
 
-case object ErrorUnauthorizedWeakCredStrength extends ErrorResponse(401, "WEAK_CRED_STRENGTH", "Credential Strength on account does not allow access")
-
 class BadRequestException(message:String) extends HttpException(message, 400)
 
 class GrantAccessException(message: String) extends HttpException(message, 401)
@@ -49,9 +47,6 @@ class FailToMatchTaxIdOnAuth extends GrantAccessException("Unauthorised! Failure
 class NinoNotFoundOnAccount extends GrantAccessException("Unauthorised! NINO not found on account!")
 
 class AccountWithLowCL extends GrantAccessException("Unauthorised! Account with low CL!")
-
-class AccountWithWeakCredStrength(message:String) extends HttpException(message, 401)
-
 
 trait ErrorHandling {
   self: BaseController =>
@@ -64,39 +59,35 @@ trait ErrorHandling {
     func.recover {
       case ex: NotFoundException ⇒
         log("Resource not found!")
-        Status(ErrorNotFound.httpStatusCode)(Json.toJson(ErrorNotFound))
+        Status(ErrorNotFound.httpStatusCode)(toJson(ErrorNotFound))
 
       case ex:BadRequestException ⇒
         log("BadRequest!")
-        Status(ErrorBadRequest.httpStatusCode)(Json.toJson(ErrorBadRequest))
+        Status(ErrorBadRequest.httpStatusCode)(toJson(ErrorBadRequest))
 
       case ex: NinoNotFoundOnAccount ⇒
         Logger.info(ex.message)
-        Unauthorized(Json.toJson(ErrorUnauthorizedNoNino))
+        Unauthorized(toJson(ErrorUnauthorizedNoNino))
 
       case ex: FailToMatchTaxIdOnAuth ⇒
         Logger.info(ex.message)
-        Status(ErrorUnauthorized.httpStatusCode)(Json.toJson(ErrorUnauthorized))
+        Status(ErrorUnauthorized.httpStatusCode)(toJson(ErrorUnauthorized))
 
       case ex: AccountWithLowCL ⇒
         Logger.info(ex.message)
-        Unauthorized(Json.toJson(ErrorUnauthorizedLowCL))
-
-      case ex: AccountWithWeakCredStrength ⇒
-        Logger.info("Unauthorised! Account with weak cred strength!")
-        Unauthorized(Json.toJson(ErrorUnauthorizedWeakCredStrength))
+        Unauthorized(toJson(ErrorUnauthorizedLowCL))
 
       case ex: Upstream4xxResponse if ex.upstreamResponseCode == 401 ⇒
         log("Upstream service returned 401")
-        Status(ErrorUnauthorizedUpstream.httpStatusCode)(Json.toJson(ErrorUnauthorizedUpstream))
+        Status(ErrorUnauthorizedUpstream.httpStatusCode)(toJson(ErrorUnauthorizedUpstream))
 
       case ex: AuthorisationException ⇒
         log("Unauthorised! Failure to authorise account or grant access")
-        Unauthorized(Json.toJson(ErrorUnauthorizedUpstream))
+        Unauthorized(toJson(ErrorUnauthorizedUpstream))
 
       case e: Exception ⇒
         Logger.error(s"Native Error - $app Internal server error: ${e.getMessage}", e)
-        Status(ErrorInternalServerError.httpStatusCode)(Json.toJson(ErrorInternalServerError))
+        Status(ErrorInternalServerError.httpStatusCode)(toJson(ErrorInternalServerError))
     }
 
   }
