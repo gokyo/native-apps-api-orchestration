@@ -459,7 +459,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
-      toJson(response) shouldBe parse(findResource("/resources/generic/tax-credit-claimant-details-response.json").get)
+      toJson(response) \\ "OrchestrationResponse" shouldBe ( parse(findResource("/resources/generic/tax-credit-claimant-details-response.json").get) \\ "OrchestrationResponse" )
     }
 
     "return success response from claimant-details service showing the data from the first call " +

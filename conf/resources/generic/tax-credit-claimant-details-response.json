@@ -43,7 +43,7 @@
               "renewal": {
                 "awardStartDate": "12/10/2030",
                 "awardEndDate": "12/10/2010",
-                "renewalStatus": "NOT_SUBMITTED",
+                "renewalStatus": "AWAITING_BARCODE",
                 "renewalNoticeIssuedDate": "12/10/2030",
                 "renewalNoticeFirstSpecifiedDate": "12/10/2010"
               }
@@ -53,5 +53,8 @@
         "failure": false
       }
     ]
+  },
+  "status": {
+    "code": "complete"
   }
 }
