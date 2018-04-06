@@ -41,6 +41,7 @@ import uk.gov.hmrc.ngc.orchestration.executors.ExecutorFactory
 import uk.gov.hmrc.play.audit.http.connector.AuditConnector
 import uk.gov.hmrc.play.audit.model.DataEvent
 import uk.gov.hmrc.play.test.{UnitSpec, WithFakeApplication}
+import uk.gov.hmrc.time.TaxYear
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{ExecutionContext, Future}
@@ -172,11 +173,13 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
   }
 
   "LiveOrchestrationService.startup" should {
+    val currentTaxYear = TaxYear.current.currentYear
+
     "return helpToSave attribute when service call to " +
       "'/mobile-help-to-save/startup' succeeds" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -192,7 +195,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       "'/mobile-help-to-save/startup' fails" in new mocks {
       stubHostAndPortGenericConnector()
       stubGETGenericConnectorFailure("/mobile-help-to-save/startup", 500)
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -206,7 +209,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
       "'/income/:nino/tax-credits/tax-credits-decision' endpoint throws 400 exception" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 400)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -232,7 +235,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
       "'/income/:nino/tax-credits/tax-credits-decision' endpoint throws 404 exception" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -258,7 +261,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return no taxCreditSummary or related Campaigns attribute when service call to " +
       "'/income/:nino/tax-credits/tax-credits-decision' endpoint throws 401 exception" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -284,7 +287,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     "return taxCreditSummary attribute when service call to " +
       "'/income/tax-credits/submission/state/enabled' endpoint returns a non 200 response" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorFailure(taxSummarySubmissionState, 404)
@@ -300,7 +303,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "response data is not affected by a failure to execute push-registration service" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(taxSummary(nino, 2017), taxSummaryData())
+      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -318,7 +321,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       "and an empty taxCreditSummary and no related Campaigns when '/income/:nino/tax-credits/tax-credits-summary' " +
       "service endpoint returns non 200 response" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorFailure(taxSummary(nino, 2017), 400)
+      stubGETGenericConnectorFailure(taxSummary(nino, currentTaxYear), 400)
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
@@ -334,7 +337,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
 
     "return taxCreditSummary empty JSON + not invoke PushReg when the tax-credit-summary service returns a non 200 response" in new mocks {
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorFailure(taxSummary(nino, 2017), 400)
+      stubGETGenericConnectorFailure(taxSummary(nino, currentTaxYear), 400)
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
