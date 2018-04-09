@@ -6,6 +6,7 @@ import com.github.tomakehurst.wiremock.client.WireMock._
 import org.scalatest.concurrent.Eventually._
 import play.api.http.{HeaderNames, MimeTypes}
 import play.api.inject.guice.GuiceApplicationBuilder
+import play.api.libs.json.Json.parse
 import play.api.libs.json.{JsArray, JsObject, Json}
 import stubs.AuthStub._
 import stubs.CustomerProfileStub._
@@ -13,11 +14,12 @@ import stubs.DataStreamStub._
 import stubs.PersonalIncomeStub._
 import stubs.PushRegistrationStub._
 import stubs.ServiceLocatorStub.registrationWillSucceed
+import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.http.HttpResponse
 import uk.gov.hmrc.time.TaxYear
 import utils.{BaseISpec, Resource}
 
-class LiveOrchestrationControllerISpec extends BaseISpec {
+class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
 
   protected val headerThatSucceeds = Seq(HeaderNames.CONTENT_TYPE  → MimeTypes.JSON,
     HeaderNames.ACCEPT        → "application/vnd.hmrc.1.0+json",
@@ -40,10 +42,13 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
     Seq(HeaderNames.COOKIE → response.allHeaders.getOrElse("Set-Cookie", throw new Exception("NO COOKIE FOUND")).head)
   }
   protected def gimmeUniqueToken(): String = randomUUID().toString
+
+  private val successfulStartUpResponseBody = """{"status":{"code":"poll"}}"""
+
   protected def pollForResponse(nino: String, headerWithCookie: Seq[(String, String)]): HttpResponse = {
     eventually {
       val result = await(new Resource(s"/native-app/$nino/poll?${withJourneyParam(journeyId)}", port).getWithHeaders(headerWithCookie))
-      result.body should not be """{"status":{"code":"poll"}}"""
+      result.body should not be successfulStartUpResponseBody
       result
     }
   }
@@ -172,7 +177,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                            |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
-      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.body shouldBe successfulStartUpResponseBody
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(response)
 
@@ -202,7 +207,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                            |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
-      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.body shouldBe successfulStartUpResponseBody
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
@@ -270,7 +275,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
            |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
-      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.body shouldBe successfulStartUpResponseBody
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
@@ -310,7 +315,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
                            |}""".stripMargin
       val response = await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(postRequest, headerThatSucceeds))
       response.status shouldBe 200
-      response.body shouldBe """{"status":{"code":"poll"}}"""
+      response.body shouldBe successfulStartUpResponseBody
       response.allHeaders("Set-Cookie").head shouldNot be(empty)
       val headerWithCookie = headerThatSucceeds ++ withCookieHeader(response)
 
@@ -329,31 +334,28 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
 
   "POST of /native-app/:nino/poll? for claimantDetails" should {
     val nino = "CS700100A"
-    val requestJson = """{"serviceRequest":[{"name": "claimant-details"}]}"""
+    val barcodeReference = "200000000000013"
 
-    "return claimant details" in {
-      writeAuditSucceeds()
-      authorised(nino)
-      claimantDetailsAreFound(nino)
-
-      val startupResponse =
-        await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(
-          requestJson, headerThatSucceeds))
+    def successfulStartup: Seq[(String, String)] = {
+      val targetResource = new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port)
+      val requestJson = """{"serviceRequest":[{"name": "claimant-details"}]}"""
+      val startupResponse = await(targetResource.postAsJsonWithHeader(requestJson, headerThatSucceeds))
 
       startupResponse.status shouldBe 200
-      startupResponse.body shouldBe """{"status":{"code":"poll"}}"""
+      startupResponse.body shouldBe successfulStartUpResponseBody
       startupResponse.allHeaders("Set-Cookie").head shouldNot be(empty)
 
-      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(startupResponse)
-      val pollResponse = pollForResponse(nino, headerWithCookie)
+      headerThatSucceeds ++ withCookieHeader(startupResponse)
+    }
 
+    "return claimant details with renewalFormType populated where barcode reference is not '000000000000000'" in {
+      writeAuditSucceeds()
+      authorised(nino)
+      claimantDetailsAreFound(nino, barcodeReference, journeyId)
+
+      val pollResponse = pollForResponse(nino, successfulStartup)
       pollResponse.status shouldBe 200
-
-      val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
-      (serviceResponse \ "name").as[String] shouldBe "claimant-details"
-      (serviceResponse \ "responseData" \ "mainApplicantNino").as[String] shouldBe nino
-      (serviceResponse \ "failure").as[Boolean] shouldBe false
-      (pollResponse.json \ "status").get shouldBe Json.obj("code" → "complete")
+      pollResponse.json shouldBe parse(findResource("/resources/generic/tax-credit-claimant-details-response.json").get)
     }
 
     "return failure flag == true when there is an error" in {
@@ -361,17 +363,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec {
       authorised(nino)
       claimantDetailsFails(nino)
 
-      val startupResponse =
-        await(new Resource(s"/native-app/$nino/startup?${withJourneyParam(journeyId)}", port).postAsJsonWithHeader(
-          requestJson, headerThatSucceeds))
-
-      startupResponse.status shouldBe 200
-      startupResponse.body shouldBe """{"status":{"code":"poll"}}"""
-      startupResponse.allHeaders("Set-Cookie").head shouldNot be(empty)
-
-      val headerWithCookie: Seq[(String, String)] = headerThatSucceeds ++ withCookieHeader(startupResponse)
-      val pollResponse = pollForResponse(nino, headerWithCookie)
-
+      val pollResponse = pollForResponse(nino, successfulStartup)
       pollResponse.status shouldBe 200
 
       val serviceResponse = (pollResponse.json \ "OrchestrationResponse" \ "serviceResponse").get.head
