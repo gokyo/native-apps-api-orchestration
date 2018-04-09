@@ -348,7 +348,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       headerThatSucceeds ++ withCookieHeader(startupResponse)
     }
 
-    "return claimant details with renewalFormType populated where barcode reference is not '000000000000000'" in {
+    "return claimant details" in {
       writeAuditSucceeds()
       authorised(nino)
       claimantDetailsAreFound(nino, barcodeReference, journeyId)
@@ -361,7 +361,7 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
     "return failure flag == true when there is an error" in {
       writeAuditSucceeds()
       authorised(nino)
-      claimantDetailsFails(nino)
+      claimantDetailsFails(nino, journeyId)
 
       val pollResponse = pollForResponse(nino, successfulStartup)
       pollResponse.status shouldBe 200

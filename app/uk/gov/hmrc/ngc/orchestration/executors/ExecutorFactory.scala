@@ -19,7 +19,7 @@ package uk.gov.hmrc.ngc.orchestration.executors
 import com.google.inject.{Inject, Singleton}
 import org.joda.time.DateTime
 import play.api.libs.json._
-import play.api.{Configuration, Logger, LoggerLike, Play}
+import play.api.{Configuration, Logger, LoggerLike}
 import uk.gov.hmrc.http.{GatewayTimeoutException, HeaderCarrier}
 import uk.gov.hmrc.ngc.orchestration.connectors.GenericConnector
 import uk.gov.hmrc.ngc.orchestration.domain._
@@ -306,95 +306,14 @@ class WidgetSurveyDataServiceExecutor(genericConnector: GenericConnector, config
 class ClaimantDetailsServiceExecutor(genericConnector: GenericConnector, config: Configuration) extends ServiceExecutor {
   override val serviceName: String = "personal-income"
   override val cacheTime: Option[Long] = None
-
   override def connector = genericConnector
-
   override val executorName: String = "claimant-details"
 
-  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = ""
+  override def path(journeyId: Option[String], nino: String, data: Option[JsValue]): String = {
+    val journeyParam = journeyId.map(id => s"?journeyId=$id").getOrElse("")
+    s"/income/$nino/tax-credits/full-claimant-details$journeyParam"
+  }
 
-  override val executionType: String = ""
-
+  override val executionType: String = GET
   override val configuration = config
-
-  override def execute(cacheTime: Option[Long], data: Option[JsValue], nino: String, journeyId: Option[String])
-                      (implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[ExecutorResponse]] = {
-
-    val journeyParam = journeyId.map(id => s"&journeyId=$id").getOrElse("")
-
-    val claimsPath = s"/income/$nino/tax-credits/claimant-details?claims=true$journeyParam"
-
-    val claimantDetails = for (
-      references <- connector.doGet(serviceName, claimsPath, hc);
-      tokens <- getTokens(nino, getBarcodes(references), journeyId);
-      details <- getDetails(nino, references, tokens, journeyId)
-    ) yield details
-
-    claimantDetails.map { response =>
-      Some(ExecutorResponse(executorName, Option(response), cacheTime, failure = Some(false)))
-    }
-  }
-
-  def getBarcodes(references: JsValue): Seq[String] = {
-    (references \ "references" \\ "barcodeReference").flatMap(_.asOpt[String])
-  }
-
-  def getTokens(nino: String, barcodes: Seq[String], journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Map[String, String]] = {
-    val journeyParam = journeyId.map(id => s"?journeyId=$id").getOrElse("")
-
-    val validBarcodes = barcodes.filter(!_.equals("000000000000000"))
-    val tokens = Future.sequence(validBarcodes.map { code =>
-
-        val path = s"/income/$nino/tax-credits/$code/auth$journeyParam"
-        val result = connector.doGet(serviceName, path, hc)
-
-        result.map(token => (code, (token \ "tcrAuthToken").asOpt[String]))
-          .filter(_._2.nonEmpty)
-          .map(token => (token._1, token._2.get))
-    })
-    tokens.recover {
-      case ex: Exception =>
-        Logger.error("failed to get tcrAuthTokens: " + ex.getMessage)
-        Seq.empty
-    }.map(_.toMap)
-  }
-
-  def getDetails(nino: String, references: JsValue, tokens: Map[String, String], journeyId: Option[String])(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[JsValue] = {
-    val journeyParam = journeyId.map(id => s"?journeyId=$id").getOrElse("")
-
-    val renewalFormType = Future.sequence(tokens.map { case (code, auth) =>
-      val path = s"/income/$nino/tax-credits/claimant-details$journeyParam"
-      val result = connector.doGet(serviceName, path, hc.withExtraHeaders(("tcrAuthToken", auth)))
-      result.map(details => (code, (details \ "renewalFormType").asOpt[String]))
-    })
-
-    renewalFormType.recover {
-      case ex: Exception =>
-        Logger.error("failed to get claimant-details: " + ex.getMessage)
-        Seq(("_NO_BAR_CODE", None))
-    }.map{ renewals =>
-      renewals.foldLeft(references) { case (doc, detailsForCode) =>
-        (doc \ "references").asOpt[JsArray].map { array =>
-          val updated = JsArray(array.value.flatMap { reference =>
-            (reference \\ "barcodeReference").map { c =>
-              if (c.asOpt[String] == Some(detailsForCode._1)) {
-                detailsForCode._2.map { details =>
-                  val transformer = (__ \ "renewal").json.update(
-                    __.read[JsObject].map {
-                      _ ++ Json.obj("renewalFormType" -> details)
-                    }
-                  )
-                  reference.transform(transformer).get
-                }.getOrElse(reference)
-              } else {
-                reference
-              }
-            }
-          })
-
-          JsObject(Seq("references" -> updated))
-        }.getOrElse(doc)
-      }
-    }
-  }
 }

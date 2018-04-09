@@ -82,8 +82,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
   def taxSummary(nino: String, year: Int): String = s"/income/$nino/tax-summary/$year$journeyId"
   def taxCreditDecision(nino: String): String = s"/income/$nino/tax-credits/tax-credits-decision$journeyId"
   def taxCreditSummary(nino: String): String = s"/income/$nino/tax-credits/tax-credits-summary$journeyId"
-  def claimantDetailsClaims(nino: String): String = s"/income/$nino/tax-credits/claimant-details?claims=true&journeyId=$uuid"
-  def claimantDetails(nino: String): String = s"/income/$nino/tax-credits/claimant-details$journeyId"
+  def fullClaimantDetails(nino: String): String = s"/income/$nino/tax-credits/full-claimant-details$journeyId"
 
   def stubHostAndPortGenericConnector()(implicit genericConnector: GenericConnector): OngoingStubbing[Int] = {
     when(genericConnector.host(anyString())).thenReturn(host)
@@ -449,55 +448,14 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
     }
 
     "return success response from claimant-details service" in new mocks {
-      val responseJson: JsValue = parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
       stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
-      stubGETGenericConnectorResponse(taxCreditsBarCode, parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}"""))
-      stubGETGenericConnectorResponse(claimantDetails(nino), (responseJson \\ "secondCall").head)
+      stubGETGenericConnectorResponse(fullClaimantDetails(nino), fullClaimantDetailsJson)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
       val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
       val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
       toJson(response) \\ "OrchestrationResponse" shouldBe ( parse(findResource("/resources/generic/tax-credit-claimant-details-response.json").get) \\ "OrchestrationResponse" )
-    }
-
-    "return success response from claimant-details service showing the data from the first call " +
-      "given a problem with the tcrAuthToken and the second call could not be made" in new mocks {
-      val responseJson: JsValue = parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
-      stubGETGenericConnectorFailure(taxCreditsBarCode, 500)
-      stubGETGenericConnectorResponse(claimantDetails(nino), (responseJson \\ "secondCall").head)
-      stubAuthorisationGrantAccess(Some(nino) and L200)
-      val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
-      val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
-      val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val expectedResponse = Json.obj(
-        "OrchestrationResponse" →
-          OrchestrationResponse(serviceResponse =
-            Some(Seq(ExecutorResponse("claimant-details", Some((responseJson \\ "firstCall").head), failure = Some(false))))))
-      val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
-      toJson(response) shouldBe toJson(expectedResponse)
-    }
-
-    "return success response from claimant-details service showing the data from the first call " +
-      "given a problem with the second call to claimant-details" in new mocks {
-      val responseJson: JsValue = parse(findResource("/resources/generic/tax-credit-claimant-details.json").get)
-      stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(claimantDetailsClaims(nino), (responseJson \\ "firstCall").head)
-      stubGETGenericConnectorResponse(taxCreditsBarCode, parse("""{"tcrAuthToken": "Basic Q1M3MDAxMDBBOjIwMDAwMDAwMDAwMDAxMw=="}"""))
-      stubGETGenericConnectorFailure(claimantDetails(nino), 500)
-      stubAuthorisationGrantAccess(Some(nino) and L200)
-      val claimantDetailsRequest = new ExecutorRequest(name = "claimant-details", None)
-      val orchestrationRequest = new OrchestrationRequest(serviceRequest = Some(Seq(claimantDetailsRequest)), None)
-      val request = OrchestrationServiceRequest(None, request = Some(orchestrationRequest))
-      val expectedResponse =
-        Json.obj("OrchestrationResponse" →
-          OrchestrationResponse(serviceResponse =
-            Some(Seq(ExecutorResponse("claimant-details", Some((responseJson \\ "firstCall").head), failure = Some(false))))))
-      val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
-      toJson(response) shouldBe toJson(expectedResponse)
     }
 
     "returns a success response from version-check generic service" in new mocks {
@@ -544,5 +502,57 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stringify(response) shouldBe
         """{"OrchestrationResponse":{"serviceResponse":[{"name":"deskpro-feedback","responseData":{"ticket_id":1980683879},"failure":false}],"eventResponse":[{"name":"ngc-audit-event","failure":false}]}}"""
     }
+  }
+
+  private val fullClaimantDetailsJson: JsValue = {
+    parse(
+      s"""{
+         |  "references": [
+         |    {
+         |      "household": {
+         |        "barcodeReference": "$validBarCode",
+         |        "applicationID": "198765432134567",
+         |        "applicant1": {
+         |          "nino": "$nino",
+         |          "title": "MR",
+         |          "firstForename": "JOHN",
+         |          "secondForename": "",
+         |          "surname": "DENSMORE"
+         |        },
+         |        "householdEndReason": ""
+         |      },
+         |      "renewal": {
+         |        "awardStartDate": "12/10/2030",
+         |        "awardEndDate": "12/10/2010",
+         |        "renewalStatus": "NOT_SUBMITTED",
+         |        "renewalNoticeIssuedDate": "12/10/2030",
+         |        "renewalNoticeFirstSpecifiedDate": "12/10/2010",
+         |        "renewalFormType": "D"
+         |      }
+         |    },
+         |    {
+         |      "household": {
+         |        "barcodeReference": "000000000000000",
+         |        "applicationID": "198765432134567",
+         |        "applicant1": {
+         |          "nino": "$nino",
+         |          "title": "MR",
+         |          "firstForename": "JOHN",
+         |          "secondForename": "",
+         |          "surname": "DENSMORE"
+         |        },
+         |        "householdEndReason": ""
+         |      },
+         |      "renewal": {
+         |        "awardStartDate": "12/10/2030",
+         |        "awardEndDate": "12/10/2010",
+         |        "renewalStatus": "AWAITING_BARCODE",
+         |        "renewalNoticeIssuedDate": "12/10/2030",
+         |        "renewalNoticeFirstSpecifiedDate": "12/10/2010"
+         |      }
+         |    }
+         |  ]
+         |}
+         |""".stripMargin)
   }
 }
