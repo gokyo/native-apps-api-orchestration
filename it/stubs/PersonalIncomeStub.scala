@@ -79,79 +79,62 @@ object PersonalIncomeStub {
   }
 
   def claimantDetailsAreFound(nino:String, barcodeReference:String, journeyId:String) = {
-    val claimsResponse =
-      s"""{
-        "references": [
-          {
-            "household": {
-              "barcodeReference": "$barcodeReference",
-              "applicationID": "198765432134567",
-              "applicant1": {
-                "nino": "$nino",
-                "title": "MR",
-                "firstForename": "JOHN",
-                "secondForename": "",
-                "surname": "DENSMORE"
-              },
-              "householdEndReason": ""
-            },
-            "renewal": {
-              "awardStartDate": "12/10/2030",
-              "awardEndDate": "12/10/2010",
-              "renewalStatus": "NOT_SUBMITTED",
-              "renewalNoticeIssuedDate": "12/10/2030",
-              "renewalNoticeFirstSpecifiedDate": "12/10/2010"
-            }
-          },
-          {
-            "household": {
-              "barcodeReference": "000000000000000",
-              "applicationID": "198765432134567",
-              "applicant1": {
-                "nino": "$nino",
-                "title": "MR",
-                "firstForename": "JOHN",
-                "secondForename": "",
-                "surname": "DENSMORE"
-              },
-              "householdEndReason": ""
-            },
-            "renewal": {
-              "awardStartDate": "12/10/2030",
-              "awardEndDate": "12/10/2010",
-              "renewalStatus": "AWAITING_BARCODE",
-              "renewalNoticeIssuedDate": "12/10/2030",
-              "renewalNoticeFirstSpecifiedDate": "12/10/2010"
-            }
-          }
-        ]
-      }"""
+      val json =
+        s"""{
+           |  "references": [
+           |    {
+           |      "household": {
+           |        "barcodeReference": "$barcodeReference",
+           |        "applicationID": "198765432134567",
+           |        "applicant1": {
+           |          "nino": "$nino",
+           |          "title": "MR",
+           |          "firstForename": "JOHN",
+           |          "secondForename": "",
+           |          "surname": "DENSMORE"
+           |        },
+           |        "householdEndReason": ""
+           |      },
+           |      "renewal": {
+           |        "awardStartDate": "12/10/2030",
+           |        "awardEndDate": "12/10/2010",
+           |        "renewalStatus": "NOT_SUBMITTED",
+           |        "renewalNoticeIssuedDate": "12/10/2030",
+           |        "renewalNoticeFirstSpecifiedDate": "12/10/2010",
+           |        "renewalFormType": "D"
+           |      }
+           |    },
+           |    {
+           |      "household": {
+           |        "barcodeReference": "000000000000000",
+           |        "applicationID": "198765432134567",
+           |        "applicant1": {
+           |          "nino": "$nino",
+           |          "title": "MR",
+           |          "firstForename": "JOHN",
+           |          "secondForename": "",
+           |          "surname": "DENSMORE"
+           |        },
+           |        "householdEndReason": ""
+           |      },
+           |      "renewal": {
+           |        "awardStartDate": "12/10/2030",
+           |        "awardEndDate": "12/10/2010",
+           |        "renewalStatus": "AWAITING_BARCODE",
+           |        "renewalNoticeIssuedDate": "12/10/2030",
+           |        "renewalNoticeFirstSpecifiedDate": "12/10/2010"
+           |      }
+           |    }
+           |  ]
+           |}
+           |""".stripMargin
 
-    val claimDetailsResponse =
-      s"""
-         |{
-         |  "hasPartner": false,
-         |  "claimantNumber": 1,
-         |  "renewalFormType": "D",
-         |  "mainApplicantNino": "$nino",
-         |  "availableForCOCAutomation": false,
-         |  "applicationId": "some-app-id"
-         |}""".stripMargin
-
-    val tokenResponse = s"""{ "tcrAuthToken" : "tcrAuthToken" }"""
-
-    stubFor(get(urlEqualTo(s"/income/$nino/tax-credits/claimant-details?claims=true&journeyId=$journeyId"))
-      .willReturn(aResponse().withStatus(200).withBody(claimsResponse)))
-
-    stubFor(get(urlEqualTo(s"/income/$nino/tax-credits/$barcodeReference/auth?journeyId=$journeyId")).willReturn(
-      aResponse().withStatus(200).withHeader("Content-Type", "application/json").withBody(tokenResponse)))
-
-    stubFor(get(urlEqualTo(s"/income/$nino/tax-credits/claimant-details?journeyId=$journeyId")).withHeader(
-      "tcrAuthToken", equalTo("tcrAuthToken")).willReturn(aResponse().withStatus(200).withBody(claimDetailsResponse)))
+      stubFor(get(urlEqualTo(s"/income/$nino/tax-credits/full-claimant-details?journeyId=$journeyId"))
+        .willReturn(aResponse().withStatus(200).withBody(json)))
   }
 
-  def claimantDetailsFails(nino:String) = {
-    stubFor(get(urlPathEqualTo(s"/income/$nino/tax-credits/claimant-details")).willReturn(
+  def claimantDetailsFails(nino:String, journeyId:String) = {
+    stubFor(get(urlPathEqualTo(s"/income/$nino/tax-credits/full-claimant-details?journeyId=$journeyId")).willReturn(
       aResponse().withStatus(500).withBody("""{ code":"error", "message":"123" }""")))
   }
 }
