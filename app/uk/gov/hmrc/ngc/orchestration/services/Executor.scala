@@ -68,21 +68,6 @@ case class TaxCreditsRenewals(connector: GenericConnector, journeyId: Option[Str
   }
 }
 
-case class PushRegistration(connector: GenericConnector, inputRequest:JsValue, journeyId: Option[String]) extends Executor {
-  override val id = "pushRegistration"
-  override val serviceName = "push-registration"
-  override def execute(nino: String, year: Int)(implicit hc: HeaderCarrier, ex: ExecutionContext): Future[Option[Result]] = {
-
-    if ((inputRequest \ "token").asOpt[String].isEmpty) {
-      Logger.info(s"${logJourneyId(journeyId)} - No token supplied!")
-    } else {
-      // Note: Fire and forget!
-      connector.doPost[JsValue](inputRequest, serviceName, s"/push/registration${buildJourneyQueryParam(journeyId)}", hc)
-    }
-    Future.successful(None)
-  }
-}
-
 case class TaxCreditSummary(connector: GenericConnector, journeyId: Option[String]) extends Executor {
   override val id: String = "taxCreditSummary"
   override val serviceName: String = "personal-income"

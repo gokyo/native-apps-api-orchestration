@@ -29,8 +29,6 @@ object TestData {
   val testTaxCreditDecision: JsValue = Json.parse("""{"showData":true}""")
   val helpToSaveStartupResponse: JsValue = Json.obj("thisIs" -> "some help to save data")
 
-  val testPushReg: JsValue = JsNull
-
   val pollResponse: JsValue = Json.obj("status" -> Json.parse("""{"code":"poll"}"""))
 
   def taxSummaryData(additional:Option[String]=None) : JsValue = Json.parse(

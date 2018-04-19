@@ -72,7 +72,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       "token"  → JsString("cxEVFiqVApc:APA91bFfSsZ38hpJOFKoplI88tp2uSQgf0baE9jL5PENJBoPcWSw7oxXTG9pV47PPrUkiPJM6EgNdgoouQ2KRWx7MaTYyfrPGH21Qn088h6biv8_ZuGG_ZPRIiE9hd959Ccfv1NAZq3b"))
 
   val taxSummarySubmissionState: String = s"/income/tax-credits/submission/state/enabled$journeyId"
-  val pushRegistration: String = s"/push/registration$journeyId"
   val pushNotificationGetMessage: String = s"/messages/$pushNotificationMessageId$journeyId"
   val pushNotificationResponseToMessage: String = s"/messages/$pushNotificationMessageId/response$journeyId"
   val taxCreditsBarCode = s"/income/$nino/tax-credits/$validBarCode/auth$journeyId"
@@ -182,7 +181,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
@@ -198,7 +196,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
       val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
@@ -212,7 +209,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 400)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val json: String = """{
@@ -238,7 +234,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val json: String = """{
@@ -264,7 +259,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorFailure(taxCreditDecision(nino), 404)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val json: String = """{
@@ -290,23 +284,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
       stubGETGenericConnectorFailure(taxSummarySubmissionState, 404)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
-      stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
-      stubAuthorisationGrantAccess(Some(nino) and L200)
-      val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
-      val response: JsObject = await(liveOrchestrationService.orchestrate(request, Nino(nino), Some(uuid)))
-      (response \\ "taxSummary").size shouldBe 1
-      (response \\ "taxCreditSummary").size shouldBe 1
-      (response \\ "campaigns").size shouldBe 1
-    }
-
-    "response data is not affected by a failure to execute push-registration service" in new mocks {
-      stubHostAndPortGenericConnector()
-      stubGETGenericConnectorResponse(taxSummary(nino, currentTaxYear), taxSummaryData())
-      stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
-      stubGETGenericConnectorResponse(taxCreditSummary(nino), taxCreditSummaryData)
-      stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorFailure(pushRegistration, 400)
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
@@ -324,7 +301,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(legacyRequest), None)
@@ -340,7 +316,6 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       stubGETGenericConnectorResponse(taxCreditDecision(nino), testTaxCreditDecision)
       stubGETGenericConnectorFailure(taxCreditSummary(nino), 500)
       stubGETGenericConnectorResponse(taxSummarySubmissionState, taxCreditRenewalsStateOpen)
-      stubPOSTGenericConnectorResponse(pushRegistration, testPushReg)
       stubGETGenericConnectorResponse("/mobile-help-to-save/startup", helpToSaveStartupResponse)
       stubAuthorisationGrantAccess(Some(nino) and L200)
       val request = OrchestrationServiceRequest(requestLegacy = Some(Json.obj()), None)
@@ -349,7 +324,7 @@ class LiveOrchestrationServiceSpec extends UnitSpec with WithFakeApplication wit
       (response \\ "taxCreditSummary").head shouldBe Json.obj()
       (response \\ "campaigns").size shouldBe 0
       verify(mockGenericConnector, times(0))
-        .doPost(any[JsValue](), anyString(), eqs(pushRegistration), any[HeaderCarrier]())(any(), any(), any[ExecutionContext]())
+        .doPost(any[JsValue](), anyString(), any[String], any[HeaderCarrier]())(any(), any(), any[ExecutionContext]())
     }
   }
 

@@ -12,7 +12,6 @@ import stubs.AuthStub._
 import stubs.CustomerProfileStub._
 import stubs.DataStreamStub._
 import stubs.PersonalIncomeStub._
-import stubs.PushRegistrationStub._
 import stubs.ServiceLocatorStub.registrationWillSucceed
 import uk.gov.hmrc.api.sandbox.FileResource
 import uk.gov.hmrc.http.HttpResponse
@@ -165,7 +164,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
-      pushRegistrationSucceeds()
       val postRequest = s"""{
                            |  "device": {
                            |    "osVersion": "10.3.3",
@@ -195,7 +193,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
-      pushRegistrationSucceeds()
       val postRequest = s"""{
                            |  "device": {
                            |    "osVersion": "10.3.3",
@@ -224,7 +221,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
-      pushRegistrationSucceeds()
       notAuthorised()
 
       val pollResponse = pollForResponse(nino, headerThatSucceeds)
@@ -242,7 +238,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
-      pushRegistrationSucceeds()
       authorisedWithNoNino()
 
       val pollResponse = pollForResponse(nino, headerThatSucceeds)
@@ -262,7 +257,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino)
       taxCreditsSubmissionStateIsEnabled()
-      pushRegistrationSucceeds()
       val postRequest =
         s"""{
            |  "device": {
@@ -303,7 +297,6 @@ class LiveOrchestrationControllerISpec extends BaseISpec with FileResource{
       taxCreditSummarySucceeds(nino, taxCreditSummaryJson)
       taxCreditsDecisionSucceeds(nino, showData = false)
       taxCreditsSubmissionStateIsEnabled()
-      pushRegistrationSucceeds()
       val postRequest = s"""{
                            |  "device": {
                            |    "osVersion": "10.3.3",
