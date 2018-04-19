@@ -110,7 +110,6 @@ class LiveOrchestrationService @Inject()(executorFactory: ExecutorFactory,
       TaxSummary(genericConnector, journeyId),
       TaxCreditSummary(genericConnector, journeyId),
       TaxCreditsRenewals(genericConnector, journeyId),
-      PushRegistration(genericConnector, inputRequest, journeyId),
       HelpToSaveStartup(Logger, genericConnector)
     ).map(item => item.execute(nino, year))
 
