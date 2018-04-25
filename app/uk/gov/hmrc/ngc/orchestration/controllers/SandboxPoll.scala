@@ -116,15 +116,15 @@ trait SandboxPoll extends FileResource with ConfiguredCampaigns {
 
     val taxCreditSummaryResult = Result("taxCreditSummary", taxCreditSummary)
 
-    val taxCreditSRenewalsStatusResult = Result("taxCreditRenewals", Json.obj("submissionsState" -> "open"))
+    val taxCreditRenewalsStatusResult = Result("taxCreditRenewals", Json.obj("submissionsState" -> "open"))
 
     val campaigns = configuredCampaigns(hasData, Json.obj("taxCreditSummary" -> taxCreditSummary))
 
     val jsonResponseAttributes = if (campaigns.nonEmpty) {
       val confCampaigns = Result("campaigns", Json.toJson(Json.toJson(campaigns)))
-      Seq(taxSummary, taxCreditSummaryResult, taxCreditSRenewalsStatusResult, confCampaigns).map(b => Json.obj(b.id -> b.jsValue))
+      Seq(taxSummary, taxCreditSummaryResult, taxCreditRenewalsStatusResult, confCampaigns).map(b => Json.obj(b.id -> b.jsValue))
     } else {
-      Seq(taxSummary, taxCreditSummaryResult, taxCreditSRenewalsStatusResult).map(b => Json.obj(b.id -> b.jsValue))
+      Seq(taxSummary, taxCreditSummaryResult, taxCreditRenewalsStatusResult).map(b => Json.obj(b.id -> b.jsValue))
     }
     AsyncResponse(jsonResponseAttributes.foldLeft(Json.obj())((b, a) => b ++ a) ++ asyncStatus, nino)
   }
